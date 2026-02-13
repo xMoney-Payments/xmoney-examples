@@ -196,7 +196,7 @@ function VerifyCardPage() {
         })
 
         // @ts-ignore
-        if (window.XMoneyPaymentForm) {
+        if (window.XMoney) {
           const container = document.getElementById('verify-card-form')
           if (!container) return
           container.innerHTML = ''
@@ -284,7 +284,7 @@ function VerifyCardPage() {
             },
           }
           // @ts-ignore
-          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -375,7 +375,7 @@ function VerifyCardPage() {
       value: 'client',
       label: 'verify-card.tsx',
       language: 'javascript',
-      content: `const xMoney = new XMoneyPaymentForm({
+      content: `const xMoney = await window.XMoney.paymentForm({
   container: 'verify-card-form',
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',

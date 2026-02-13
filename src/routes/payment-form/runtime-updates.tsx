@@ -89,7 +89,7 @@ function RuntimeUpdatesPage() {
         })
 
         // @ts-ignore
-        if (window.XMoneyPaymentForm) {
+        if (window.XMoney) {
           const container = document.getElementById(
             'runtime-updates-payment-form'
           )
@@ -135,7 +135,7 @@ function RuntimeUpdatesPage() {
             },
           }
           // @ts-ignore
-          sdkInstanceRef.current = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstanceRef.current = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -230,7 +230,7 @@ function RuntimeUpdatesPage() {
       label: 'payment-form.tsx',
       language: 'javascript',
       content: `// Initialize the payment form
-const checkout = new XMoneyPaymentForm({
+const checkout = await window.XMoney.paymentForm({
   container: 'payment-form-widget',
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',

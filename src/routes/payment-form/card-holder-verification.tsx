@@ -129,7 +129,7 @@ function CardHolderVerification() {
         })
 
         // @ts-ignore
-        if (window.XMoneyPaymentForm) {
+        if (window.XMoney) {
           const container = document.getElementById(
             'card-holder-verification-payment-form'
           )
@@ -192,7 +192,7 @@ function CardHolderVerification() {
             },
           }
           // @ts-ignore
-          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -275,7 +275,7 @@ interface CardHolderVerificationResult {
 }
 
 // Initialize the payment form with card holder verification
-const checkout = new XMoneyPaymentForm({
+const checkout = await window.XMoney.paymentForm({
   container: 'payment-form-widget',
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',

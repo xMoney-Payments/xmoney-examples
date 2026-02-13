@@ -136,7 +136,7 @@ function CheckoutPage() {
         })
 
         // @ts-ignore
-        if (window.XMoneyPaymentForm) {
+        if (window.XMoney) {
           const container = document.getElementById('checkout-payment-form')
           if (!container) return
           container.innerHTML = ''
@@ -192,7 +192,7 @@ function CheckoutPage() {
             },
           }
           // @ts-ignore
-          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -234,7 +234,7 @@ function CheckoutPage() {
       value: 'client',
       label: 'checkout.tsx',
       language: 'javascript',
-      content: `const xMoney = new XMoneyPaymentForm({
+      content: `const xMoney = await window.XMoney.paymentForm({
   container: 'checkout-payment-form',
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
