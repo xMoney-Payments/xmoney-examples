@@ -128,7 +128,6 @@ function CardHolderVerification() {
           checksum: data.checksum,
         })
 
-        // @ts-ignore
         if (window.XMoneyPaymentForm) {
           const container = document.getElementById(
             'card-holder-verification-payment-form'
@@ -191,7 +190,6 @@ function CardHolderVerification() {
               }
             },
           }
-          // @ts-ignore
           sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
         }
       } catch (err) {

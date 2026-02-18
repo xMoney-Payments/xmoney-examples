@@ -88,7 +88,6 @@ function RuntimeUpdatesPage() {
           checksum: data.checksum,
         })
 
-        // @ts-ignore
         if (window.XMoneyPaymentForm) {
           const container = document.getElementById(
             'runtime-updates-payment-form'
@@ -134,7 +133,6 @@ function RuntimeUpdatesPage() {
               console.log('Payment complete', data)
             },
           }
-          // @ts-ignore
           sdkInstanceRef.current = new window.XMoneyPaymentForm(sdkConfig)
         }
       } catch (err) {

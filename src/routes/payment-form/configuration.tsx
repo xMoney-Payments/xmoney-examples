@@ -145,7 +145,6 @@ function PaymentFormConfiguration() {
           checksum: data.checksum,
         })
 
-        // @ts-ignore
         if (window.XMoneyPaymentForm) {
           const container = document.getElementById(
             'config-payment-form-widget'
@@ -165,7 +164,6 @@ function PaymentFormConfiguration() {
           if (config.enableGooglePay) {
             options.googlePay = { enabled: true }
           }
-          // @ts-ignore
           options.validationMode = config.validationMode
 
           if (config.enableApplePay) {
@@ -202,7 +200,6 @@ function PaymentFormConfiguration() {
               }
             },
           }
-          // @ts-ignore
           sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
         }
       } catch (err) {

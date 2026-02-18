@@ -135,7 +135,6 @@ function CheckoutPage() {
           checksum: data.checksum,
         })
 
-        // @ts-ignore
         if (window.XMoneyPaymentForm) {
           const container = document.getElementById('checkout-payment-form')
           if (!container) return
@@ -191,7 +190,6 @@ function CheckoutPage() {
               }
             },
           }
-          // @ts-ignore
           sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
         }
       } catch (err) {
