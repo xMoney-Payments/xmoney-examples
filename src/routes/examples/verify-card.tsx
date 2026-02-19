@@ -195,7 +195,6 @@ function VerifyCardPage() {
           checksum: data.checksum,
         })
 
-        // @ts-ignore
         if (window.XMoney) {
           const container = document.getElementById('verify-card-form')
           if (!container) return
@@ -283,8 +282,7 @@ function VerifyCardPage() {
               }
             },
           }
-          // @ts-ignore
-          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
+          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
