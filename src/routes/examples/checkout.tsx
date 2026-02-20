@@ -6,6 +6,10 @@ import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatConfigToJS } from '@/lib/format-utils'
 import { TwoColumnLayout, type CodeTab } from '@/components/two-column-layout'
+import type {
+  XMoneyPaymentFormConfig,
+  XMoneyPaymentFormInstance,
+} from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 export const Route = createFileRoute('/examples/checkout')({
   component: CheckoutPage,
@@ -55,6 +59,8 @@ function CheckoutPage() {
 
   const [items, setItems] = useState<CartItem[]>(sampleItems)
   const [currency, setCurrency] = useState<'EUR' | 'RON'>('EUR')
+  const [sdkInstance, setSdkInstance] =
+    useState<XMoneyPaymentFormInstance | null>(null)
 
   // Exchange rate: 1 EUR = 4.97 RON (approximate)
   const EUR_TO_RON_RATE = 4.97
@@ -100,9 +106,28 @@ function CheckoutPage() {
     )
   }
 
+  async function getOrder() {
+    const { publicKey, apiKey } = getApiCredentials()
+
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: total,
+        currency: currency,
+        description: `Order: ${items.map((i) => i.name).join(', ')}`,
+        publicKey,
+        apiKey,
+      }),
+    })
+
+    if (!response.ok) throw new Error('Failed to init checkout')
+    const data = await response.json()
+    return data
+  }
+
   useEffect(() => {
     let mounted = true
-    let sdkInstance: any = null
 
     const initCheckout = async () => {
       setLoading(true)
@@ -110,22 +135,8 @@ function CheckoutPage() {
       setPaymentResult(null)
 
       try {
-        const { publicKey, apiKey } = getApiCredentials()
-
-        const response = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: total,
-            currency: currency,
-            description: `Order: ${items.map((i) => i.name).join(', ')}`,
-            publicKey,
-            apiKey,
-          }),
-        })
-
-        if (!response.ok) throw new Error('Failed to init checkout')
-        const data = await response.json()
+        const { publicKey } = getApiCredentials()
+        const data = await getOrder()
 
         if (!mounted) return
 
@@ -140,20 +151,27 @@ function CheckoutPage() {
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: any = {
+          const sdkConfig: XMoneyPaymentFormConfig = {
             container: 'checkout-payment-form',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
+            card: {
+              validationMode: 'onBlur',
+              submitButton: { type: 'order' },
+            },
+            paymentMethods: {
+              googlePay: {
+                enabled: true,
+                appearance: { color: 'black', type: 'order' },
+              },
+              applePay: {
+                enabled: true,
+                appearance: { style: 'black', type: 'order' },
+              },
+            },
             options: {
               locale: 'en-US',
-              buttonType: 'pay',
-              displaySubmitButton: true,
-              displaySaveCardOption: true,
-              enableSavedCards: false,
-              validationMode: 'onBlur',
-              googlePay: { enabled: true, appearance: { color: 'black' } },
-              applePay: { enabled: true, appearance: { style: 'black' } },
               appearance: {
                 theme: 'custom',
                 variables: {
@@ -183,14 +201,14 @@ function CheckoutPage() {
                 })
               }
             },
-            onPaymentComplete: (data: any) => {
-              console.log('Payment complete', data)
+            onPaymentComplete: () => {
               if (mounted) {
                 setPaymentResult({ status: 'success', data })
               }
             },
           }
-          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
+          const instance = await window.XMoney.paymentForm(sdkConfig)
+          setSdkInstance(instance)
         }
       } catch (err) {
         console.error(err)
@@ -213,7 +231,22 @@ function CheckoutPage() {
         }
       }
     }
-  }, [total, items, currency])
+  }, [])
+
+  useEffect(() => {
+    if (!sdkInstance) return
+    getOrder()
+      .then((data) => {
+        sdkInstance?.updateOrder({
+          orderPayload: data.payload,
+          orderChecksum: data.checksum,
+        })
+      })
+      .catch((err) => {
+        console.error('Failed to update order', err)
+        setError('Failed to update order')
+      })
+  }, [currency, items, total])
 
   const handleRefresh = () => {
     window.location.reload()
@@ -237,17 +270,37 @@ function CheckoutPage() {
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
+  card: ${(() => {
+    const str = formatConfigToJS(
+      {
+        submitButton: { type: 'order' },
+        savedCards: { enabled: true, optInVisible: true },
+        validationMode: 'onBlur',
+      },
+      2
+    )
+    return str
+      .split('\n')
+      .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
+      .join('\n')
+  })()},
+  paymentMethods: ${(() => {
+    const str = formatConfigToJS(
+      {
+        googlePay: { enabled: true, appearance: { color: 'black' } },
+        applePay: { enabled: true, appearance: { style: 'black' } },
+      },
+      2
+    )
+    return str
+      .split('\n')
+      .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
+      .join('\n')
+  })()},
   options: ${(() => {
     const str = formatConfigToJS(
       {
         locale: 'en-US',
-        buttonType: 'pay',
-        displaySubmitButton: true,
-        displaySaveCardOption: true,
-        enableSavedCards: false,
-        validationMode: 'onBlur',
-        googlePay: { enabled: true, appearance: { color: 'black' } },
-        applePay: { enabled: true, appearance: { style: 'black' } },
         appearance: {
           theme: 'custom',
           variables: {
@@ -279,7 +332,9 @@ function CheckoutPage() {
   onPaymentComplete: (data) => {
     console.log('Payment complete', data)
   }
-})`,
+})
+  // Later, to update order details (e.g., when user changes quantity or currency):
+  xMoney.updateOrder: ({ orderPayload, orderChecksum })`,
     },
     {
       value: 'server',

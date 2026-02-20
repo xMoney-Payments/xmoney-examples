@@ -16,6 +16,10 @@ import {
   ThreeColumnLayout,
   type CodeTab,
 } from '@/components/three-column-layout'
+import type {
+  XMoneyPaymentFormConfig,
+  XMoneyPaymentFormInstance,
+} from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 export const Route = createFileRoute('/payment-form/runtime-updates')({
   component: RuntimeUpdatesPage,
@@ -24,14 +28,14 @@ export const Route = createFileRoute('/payment-form/runtime-updates')({
 function RuntimeUpdatesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const sdkInstanceRef = useRef<any>(null)
+  const sdkInstanceRef = useRef<XMoneyPaymentFormInstance | null>(null)
 
   // Order state (for form inputs)
   const [amount, setAmount] = useState(100)
   const [currency, setCurrency] = useState('EUR')
 
   // Locale state (for form inputs)
-  const [locale, setLocale] = useState('en-US')
+  const [locale, setLocale] = useState<'en-US' | 'el-GR' | 'ro-RO'>('en-US')
 
   // Appearance state (for form inputs)
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'custom'>(
@@ -42,7 +46,9 @@ function RuntimeUpdatesPage() {
   // Applied state (what's actually applied to the SDK - used in code tabs)
   const [appliedAmount, setAppliedAmount] = useState(100)
   const [appliedCurrency, setAppliedCurrency] = useState('EUR')
-  const [appliedLocale, setAppliedLocale] = useState('en-US')
+  const [appliedLocale, setAppliedLocale] = useState<
+    'en-US' | 'el-GR' | 'ro-RO'
+  >('en-US')
   const [appliedThemeMode, setAppliedThemeMode] = useState<
     'light' | 'dark' | 'custom'
   >('light')
@@ -95,18 +101,23 @@ function RuntimeUpdatesPage() {
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: any = {
+          const sdkConfig: XMoneyPaymentFormConfig = {
             container: 'runtime-updates-payment-form',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
+            card: {
+              validationMode: 'onBlur',
+              submitButton: {
+                type: 'pay',
+              },
+              savedCards: {
+                enabled: false,
+                optInVisible: false,
+              },
+            },
             options: {
               locale: locale,
-              buttonType: 'pay',
-              displaySubmitButton: true,
-              displaySaveCardOption: false,
-              enableSavedCards: false,
-              validationMode: 'onBlur',
               appearance: {
                 theme: themeMode,
                 variables:
@@ -133,7 +144,7 @@ function RuntimeUpdatesPage() {
               console.log('Payment complete', data)
             },
           }
-          sdkInstanceRef.current = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstanceRef.current = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -181,7 +192,10 @@ function RuntimeUpdatesPage() {
       const data = await response.json()
 
       // Update the form instance without reloading
-      sdkInstanceRef.current.updateOrder(data.payload, data.checksum)
+      sdkInstanceRef.current.updateOrder({
+        orderPayload: data.payload,
+        orderChecksum: data.checksum,
+      })
       setInitData({
         publicKey,
         payload: data.payload,
@@ -255,7 +269,7 @@ async function updateOrderAmount(newAmount, newCurrency) {
   const { payload, checksum } = await response.json()
   
   // Update without reloading the form
-  checkout.updateOrder(payload, checksum)
+  checkout.updateOrder({ orderPayload: payload, orderChecksum: checksum })
 }
 
 // Update locale dynamically
@@ -304,11 +318,11 @@ const orderData = {
 }
 
 const apiKey = '<YOUR_API_KEY>'
-const payload = getBase64JsonRequest(orderData)
-const checksum = getBase64Checksum(orderData, apiKey)
+const orderPayload = getBase64JsonRequest(orderData)
+const orderChecksum = getBase64Checksum(orderData, apiKey)
 
 // Return payload and checksum to frontend
-// Frontend can call checkout.updateOrder(payload, checksum) to update`,
+// Frontend can call checkout.updateOrder({orderPayload, orderChecksum}) to update`,
     },
   ]
 
@@ -405,7 +419,12 @@ const checksum = getBase64Checksum(orderData, apiKey)
                   <Label htmlFor='locale' className='text-xs'>
                     Locale
                   </Label>
-                  <Select value={locale} onValueChange={setLocale}>
+                  <Select
+                    value={locale}
+                    onValueChange={(value) =>
+                      setLocale(value as 'en-US' | 'el-GR' | 'ro-RO')
+                    }
+                  >
                     <SelectTrigger id='locale' className='h-9 text-sm'>
                       <SelectValue />
                     </SelectTrigger>

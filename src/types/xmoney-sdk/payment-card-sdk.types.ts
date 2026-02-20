@@ -1,5 +1,12 @@
 import type { CardHolderVerificationResult } from '../checkout.types'
-import type { XMoneyBaseConfig, XMoneyBaseInstance } from './sdk-base.types'
+import type {
+  FormButtonType,
+  Locale,
+  Theme,
+  ValidationMode,
+  XMoneyBaseConfig,
+  XMoneyBaseInstance,
+} from './sdk-base.types'
 
 /**
  * Configuration options for initializing and customizing the xMoney Payment Card element.
@@ -11,7 +18,7 @@ export interface XMoneyPaymentCardConfig extends XMoneyBaseConfig {
      *
      * @defaultValue `"onChange"`
      */
-    validationMode?: 'onSubmit' | 'onChange' | 'onBlur' | 'onTouched'
+    validationMode?: ValidationMode
     /**
      * Options for displaying saved cards for returning users.
      */
@@ -41,15 +48,7 @@ export interface XMoneyPaymentCardConfig extends XMoneyBaseConfig {
        *
        * @defaultValue `"pay"`
        */
-      type?:
-        | 'book'
-        | 'buy'
-        | 'checkout'
-        | 'donate'
-        | 'order'
-        | 'pay'
-        | 'subscribe'
-        | 'topUp'
+      type?: FormButtonType
     }
     /**
      * Card holder verification options.
@@ -84,7 +83,7 @@ export interface XMoneyPaymentCardConfig extends XMoneyBaseConfig {
        *
        * @defaultValue `"light"`
        */
-      theme?: 'light' | 'dark' | 'custom'
+      theme?: Theme
 
       /**
        * CSS variables for custom themes.
@@ -106,7 +105,7 @@ export interface XMoneyPaymentCardConfig extends XMoneyBaseConfig {
      *
      * @defaultValue `"en-US"`
      */
-    locale?: 'en-US' | 'el-GR' | 'ro-RO'
+    locale?: Locale
   }
 
   /**
@@ -126,7 +125,7 @@ export interface XMoneyPaymentCardInstance extends XMoneyBaseInstance {
    *
    * @param locale - Locale to set for the form.
    */
-  updateLocale: (locale: 'en-US' | 'el-GR' | 'ro-RO') => void
+  updateLocale: (locale: Locale) => void
 
   /**
    * Updates the appearance of the payment form.
@@ -134,7 +133,7 @@ export interface XMoneyPaymentCardInstance extends XMoneyBaseInstance {
    * @param appearance - Theme, CSS variables, and/or CSS rules to apply.
    */
   updateAppearance: (appearance: {
-    theme?: 'light' | 'dark' | 'custom'
+    theme?: Theme
     variables?: Record<string, string>
     rules?: Record<string, Record<string, string>>
   }) => void

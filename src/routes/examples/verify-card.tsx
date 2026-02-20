@@ -42,6 +42,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import type {
+  XMoneyPaymentFormConfig,
+  XMoneyPaymentFormInstance,
+} from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 export const Route = createFileRoute('/examples/verify-card')({
   component: VerifyCardPage,
@@ -160,7 +164,7 @@ function VerifyCardPage() {
 
   useEffect(() => {
     let mounted = true
-    let sdkInstance: any = null
+    let sdkInstance: XMoneyPaymentFormInstance | null = null
 
     const initVerifyCard = async () => {
       if (!showAddCard) {
@@ -200,18 +204,16 @@ function VerifyCardPage() {
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: any = {
+          const sdkConfig: XMoneyPaymentFormConfig = {
             container: 'verify-card-form',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
+            card: {
+              validationMode: 'onBlur',
+            },
             options: {
               locale: 'en-US',
-              buttonType: 'pay',
-              displaySubmitButton: true,
-              displaySaveCardOption: true,
-              enableSavedCards: false,
-              validationMode: 'onBlur',
             },
             onReady: () => {
               if (mounted) setLoading(false)
@@ -223,8 +225,7 @@ function VerifyCardPage() {
                 setLoading(false)
               }
             },
-            onPaymentComplete: async (data: any) => {
-              console.log('Card verified', data)
+            onPaymentComplete: async () => {
               if (mounted) {
                 setLoading(false)
                 setShowAddCard(false)
@@ -282,7 +283,7 @@ function VerifyCardPage() {
               }
             },
           }
-          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -378,15 +379,22 @@ function VerifyCardPage() {
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
+  card: ${(() => {
+    const str = formatConfigToJS(
+      {
+        validationMode: 'onBlur',
+      },
+      2
+    )
+    return str
+      .split('\n')
+      .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
+      .join('\n')
+  })()},
   options: ${(() => {
     const str = formatConfigToJS(
       {
         locale: 'en-US',
-        buttonType: 'pay',
-        displaySubmitButton: true,
-        displaySaveCardOption: true,
-        enableSavedCards: false,
-        validationMode: 'onBlur',
       },
       2
     )

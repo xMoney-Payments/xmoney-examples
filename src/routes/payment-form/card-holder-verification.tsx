@@ -26,6 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import type {
+  XMoneyPaymentFormConfig,
+  XMoneyPaymentFormInstance,
+} from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 export const Route = createFileRoute('/payment-form/card-holder-verification')({
   component: CardHolderVerification,
@@ -97,7 +101,7 @@ function CardHolderVerification() {
 
   useEffect(() => {
     let mounted = true
-    let sdkInstance: any = null
+    let sdkInstance: XMoneyPaymentFormInstance | null = null
 
     const initCheckout = async () => {
       setLoading(true)
@@ -135,18 +139,14 @@ function CardHolderVerification() {
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: any = {
+          const sdkConfig: XMoneyPaymentFormConfig = {
             container: 'card-holder-verification-payment-form',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
-            options: {
-              locale: 'en-US',
-              buttonType: 'pay',
-              displaySubmitButton: true,
-              displaySaveCardOption: false,
-              enableSavedCards: false,
+            card: {
               validationMode: 'onBlur',
+              savedCards: { enabled: false }, // Disable saved cards for this demo
               cardHolderVerification: {
                 name: {
                   firstName: verificationData.firstName,
@@ -162,6 +162,9 @@ function CardHolderVerification() {
                   return result.status === MatchStatusEnum.Matched
                 },
               },
+            },
+            options: {
+              locale: 'en-US',
             },
             onReady: () => {
               if (mounted) setLoading(false)
@@ -180,8 +183,7 @@ function CardHolderVerification() {
                 })
               }
             },
-            onPaymentComplete: (data: any) => {
-              console.log('Payment complete', data)
+            onPaymentComplete: () => {
               if (mounted) {
                 setLoading(false)
                 setPaymentResult({
@@ -190,7 +192,7 @@ function CardHolderVerification() {
               }
             },
           }
-          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -278,7 +280,8 @@ const checkout = await window.XMoney.paymentForm({
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
-  options: {
+  card: {
+    savedCards: { enabled: false }, // Disable saved cards for this demo
     cardHolderVerification: {
       name: {
         firstName: '${verificationData.firstName}',

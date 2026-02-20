@@ -1,4 +1,11 @@
-import type { XMoneyBaseConfig, XMoneyBaseInstance } from './sdk-base.types'
+import type {
+  GooglePayButtonBorderType,
+  GooglePayButtonColor,
+  GooglePayButtonType,
+  Locale,
+  XMoneyBaseConfig,
+  XMoneyBaseInstance,
+} from './sdk-base.types'
 
 /**
  * Configuration options for initializing and customizing the XMoney Google Pay button.
@@ -12,7 +19,7 @@ export interface XMoneyGooglePayConfig extends XMoneyBaseConfig {
      * Locale for the Google Pay.
      * @defaultValue `"en-US"`
      */
-    locale?: 'en-US' | 'el-GR' | 'ro-RO'
+    locale?: Locale
     /**
      * Appearance customization options.
      */
@@ -22,7 +29,7 @@ export interface XMoneyGooglePayConfig extends XMoneyBaseConfig {
        *
        * @defaultValue `"black"` when theme is light, `"white"` when theme is dark
        */
-      color?: 'white' | 'black'
+      color?: GooglePayButtonColor
       /**
        * Corner radius of the Google Pay button.
        * @defaultValue `12`
@@ -32,20 +39,12 @@ export interface XMoneyGooglePayConfig extends XMoneyBaseConfig {
        *  Type of the Google Pay button.
        * @defaultValue `"pay"`
        */
-      type?:
-        | 'book'
-        | 'buy'
-        | 'checkout'
-        | 'donate'
-        | 'order'
-        | 'plain'
-        | 'pay'
-        | 'subscribe'
+      type?: GooglePayButtonType
       /**
        * Border type of the Google Pay button.
        * @defaultValue `"no_border"`
        */
-      borderType?: 'default_border' | 'no_border'
+      borderType?: GooglePayButtonBorderType
     }
   }
 }
