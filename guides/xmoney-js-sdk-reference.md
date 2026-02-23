@@ -9,7 +9,7 @@ The **xMoney.js SDK** (`xmoney.js`) powers **Embedded Checkout**, allowing you t
 Include the script on every page where you want to render the payment form.
 
 ```html
-<script src="https://secure.xmoney.com/sdk/v1/xmoney.js"></script>
+<script src="https://secure.xmoney.com/sdk/v2/xmoney.js"></script>
 ```
 
 ## About Embedded Checkout
@@ -23,32 +23,34 @@ Include the script on every page where you want to render the payment form.
 - PCI DSS compliant - card data never touches your servers
 - Supports cards, Google Pay, and Apple Pay
 
-For redirect-based checkout flows, see [Hosted Checkout](../checkout/hosted-checkout.md).
-
 ## Initialization
 
-To create an Embedded Checkout payment form, instantiate the `XMoneyPaymentForm` class.
+To create an Embedded Checkout payment form, call the async `window.XMoney.paymentForm()` factory.
 
 ```javascript
-const checkout = new window.XMoneyPaymentForm({
+const checkout = await window.XMoney.paymentForm({
   // Required
   container: 'payment-form-widget',
   publicKey: 'pk_test_12345',
   orderPayload: '...', // Received from your server
   orderChecksum: '...', // Received from your server
 
-  // Configuration
-  options: {
-    locale: 'en-US',
-    buttonType: 'pay',
+  // Card-specific configuration
+  card: {
     validationMode: 'onChange',
-    displaySubmitButton: true,
-    displaySaveCardOption: true,
-    enableSavedCards: true,
-    // Wallets
+    submitButton: { visible: true, type: 'pay' },
+    savedCards: { enabled: true, optInVisible: true },
+  },
+
+  // Payment methods configuration
+  paymentMethods: {
     googlePay: { enabled: true },
     applePay: { enabled: true },
-    // Styling
+  },
+
+  // Shared options (appearance & locale)
+  options: {
+    locale: 'en-US',
     appearance: {
       theme: 'custom',
       variables: {
@@ -61,51 +63,64 @@ const checkout = new window.XMoneyPaymentForm({
   onReady: () => console.log('Form is ready'),
   onError: (error) => console.error('Form error', error),
   onPaymentComplete: (data) => console.log('Payment completed', data),
-  onSubmitPending: (isPending) => console.log('Processing...', isPending),
+  onPaymentProcessing: (isProcessing) =>
+    console.log('Processing...', isProcessing),
 })
 ```
 
 ## Configuration Properties
 
-| Property            | Type       | Required | Description                                                            |
-| :------------------ | :--------- | :------: | :--------------------------------------------------------------------- |
-| `container`         | `string`   | **Yes**  | DOM element ID where the form will be rendered.                        |
-| `publicKey`         | `string`   | **Yes**  | Your Site ID public key (`pk_test_...` or `pk_live_...`).              |
-| `orderPayload`      | `string`   | **Yes**  | Base64-encoded encrypted order data from your backend.                 |
-| `orderChecksum`     | `string`   | **Yes**  | HMAC signature of the payload from your backend.                       |
-| `options`           | `object`   |    No    | Customization options (see below).                                     |
-| `onReady`           | `function` |    No    | Callback fired when form is ready.                                     |
-| `onError`           | `function` |    No    | Callback fired on form initialization errors (not transaction errors). |
-| `onPaymentComplete` | `function` |    No    | Callback fired when payment is completed (success or failure).         |
-| `onSubmitPending`   | `function` |    No    | Callback fired when submission state changes.                          |
+| Property              | Type       | Required | Description                                                                |
+| :-------------------- | :--------- | :------: | :------------------------------------------------------------------------- |
+| `container`           | `string`   | **Yes**  | DOM element ID where the form will be rendered.                            |
+| `publicKey`           | `string`   | **Yes**  | Your Site ID public key (`pk_test_...` or `pk_live_...`).                  |
+| `orderPayload`        | `string`   | **Yes**  | Base64-encoded encrypted order data from your backend.                     |
+| `orderChecksum`       | `string`   | **Yes**  | HMAC signature of the payload from your backend.                           |
+| `card`                | `object`   |    No    | Card-specific options: validation, submit button, saved cards (see below). |
+| `paymentMethods`      | `object`   |    No    | Payment methodts options: `googlePay`, `applePay` (see below).             |
+| `options`             | `object`   |    No    | Shared options: `locale` and `appearance` (see below).                     |
+| `onReady`             | `function` |    No    | Callback fired when form is ready.                                         |
+| `onError`             | `function` |    No    | Callback fired on form initialization errors (not transaction errors).     |
+| `onPaymentComplete`   | `function` |    No    | Callback fired when payment is completed (success or failure).             |
+| `onPaymentProcessing` | `function` |    No    | Callback fired when submission processing state changes.                   |
 
 ## Options
 
-The `options` object controls the behavior and look of the form.
+### `card` — Card-specific options
 
-### Functional Options
+| Property                       | Type      | Default      | Description                                                                                      |
+| :----------------------------- | :-------- | :----------- | :----------------------------------------------------------------------------------------------- |
+| `card.validationMode`          | `string`  | `'onChange'` | When validation triggers: `'onSubmit'`, `'onChange'`, `'onBlur'`, `'onTouched'`.                 |
+| `card.submitButton.visible`    | `boolean` | `true`       | If `false`, you must call `checkout.submit()` manually.                                          |
+| `card.submitButton.type`       | `string`  | `'pay'`      | Text on the submit button (e.g., `'pay'`, `'book'`, `'subscribe'`).                              |
+| `card.savedCards.enabled`      | `boolean` | `false`      | Display saved cards for returning customers.                                                     |
+| `card.savedCards.optInVisible` | `boolean` | `false`      | Show checkbox to save card for future use.                                                       |
+| `card.cardHolderVerification`  | `object`  | —            | Cardholder name verification config (see [Card Holder Verification](#card-holder-verification)). |
 
-| Option                    | Type                            | Default      | Description                                                                            |
-| :------------------------ | :------------------------------ | :----------- | :------------------------------------------------------------------------------------- |
-| `locale`                  | `'en-US' \| 'el-GR' \| 'ro-RO'` | `'en-US'`    | Language for labels and error messages.                                                |
-| `displaySubmitButton`     | `boolean`                       | `true`       | If `false`, you must call `checkout.submit()` manually.                                |
-| `buttonType`              | `string`                        | `'pay'`      | Text on the submit button (e.g., `'pay'`, `'book'`, `'subscribe'`).                    |
-| `validationMode`          | `string`                        | `'onChange'` | When validation triggers: `'onSubmit'`, `'onChange'`, `'onBlur'`, `'onTouched'`.       |
-| `displaySaveCardOption`   | `boolean`                       | `false`      | Show checkbox to save card for future use.                                             |
-| `enableSavedCards`        | `boolean`                       | `false`      | Display saved cards for returning customers.                                           |
-| `enableBackgroundRefresh` | `boolean`                       | `false`      | Enable automatic order status polling. When `true`, `onPaymentComplete` will not fire. |
+### `paymentMethods` — options
+
+| Property                   | Type     | Default | Description               |
+| :------------------------- | :------- | :------ | :------------------------ |
+| `paymentMethods.googlePay` | `object` | —       | Google Pay configuration. |
+| `paymentMethods.applePay`  | `object` | —       | Apple Pay configuration.  |
+
+### `options` — Shared options
+
+| Option               | Type                            | Default   | Description                                            |
+| :------------------- | :------------------------------ | :-------- | :----------------------------------------------------- |
+| `options.locale`     | `'en-US' \| 'el-GR' \| 'ro-RO'` | `'en-US'` | Language for labels and error messages.                |
+| `options.appearance` | `object`                        | —         | Theming — see [Customization](#customization-theming). |
 
 ### Saved Cards (One-Click Payment)
 
 To enable one-click payments for returning customers:
 
-1. Set `options.enableSavedCards: true`.
-2. Set `options.displaySaveCardOption: true` (to allow saving new cards).
+1. Set `card.savedCards.enabled: true`.
+2. Set `card.savedCards.optInVisible: true` (to allow saving new cards).
 
 ```javascript
-options: {
-  enableSavedCards: true,
-  displaySaveCardOption: true,
+card: {
+  savedCards: { enabled: true, optInVisible: true },
 }
 ```
 
@@ -116,7 +131,7 @@ You can enable Google Pay and Apple Pay directly within the form.
 #### Google Pay
 
 ```javascript
-options: {
+paymentMethods: {
   googlePay: {
     enabled: true,
     appearance: {
@@ -140,7 +155,7 @@ options: {
 #### Apple Pay
 
 ```javascript
-options: {
+paymentMethods: {
   applePay: {
     enabled: true,
     appearance: {
@@ -168,7 +183,7 @@ options: {
 Verify cardholder name against bank records before processing payment:
 
 ```javascript
-options: {
+card: {
   cardHolderVerification: {
     name: {
       firstName: "John",
@@ -181,7 +196,7 @@ options: {
       // - 'NOT_MATCHED': Name does not match
       // - 'PARTIAL_MATCH': Partial match (e.g., first name matches, last name doesn't)
       // - 'NOT_CHECKED': Verification was not performed
-      
+
       // Return true to proceed, false to block payment
       return result.status === 'MATCHED'
     }
@@ -277,18 +292,21 @@ checkout.updateAppearance({
 
 ### `submit(): void`
 
-Triggers the payment submission. Useful if `displaySubmitButton` is `false`.
+Triggers the payment submission. Useful if `card.submitButton.visible` is `false`.
 
 ```javascript
 checkout.submit()
 ```
 
-### `close(): void`
+### `validate(): { isValid: boolean; errors: Record<string, string> }`
 
-Hides/closes the form UI without destroying the instance. The form can be shown again later.
+Triggers field validation and returns the result **without submitting** the form. Useful for inline validation in multi-step flows.
 
 ```javascript
-checkout.close()
+const { isValid, errors } = checkout.validate()
+if (!isValid) {
+  console.log('Validation errors:', errors)
+}
 ```
 
 ### `destroy(): void`
@@ -298,10 +316,16 @@ Removes the iframe and cleans up event listeners. **Always call this when the co
 ```javascript
 // React useEffect cleanup example
 useEffect(() => {
-  const checkout = new window.XMoneyPaymentForm({ /* ... */ })
-  
+  let checkout
+
+  window.XMoney.paymentForm({
+    /* ... */
+  }).then((instance) => {
+    checkout = instance
+  })
+
   return () => {
-    checkout.destroy() // Critical: prevents memory leaks
+    checkout?.destroy() // Critical: prevents memory leaks
   }
 }, [])
 ```
@@ -310,12 +334,12 @@ useEffect(() => {
 
 All callbacks are optional.
 
-| Callback                     | Type                               | Description                                                                                                                                                                                                                       |
-| :--------------------------- | :--------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `onReady()`                  | `() => void`                       | Fired when the iframe has fully loaded and is interactive.                                                                                                                                                                        |
-| `onError(err)`               | `(error: string \| Error) => void` | Fired when form initialization fails (e.g., invalid configuration, network errors during initialization). **Note**: This does not fire for transaction errors. Transaction errors are handled via `onPaymentComplete`.            |
-| `onPaymentComplete(data)`    | `(data: object) => void`           | Fired when payment is completed, regardless of success or failure. Receives the transaction result (e.g., `{ orderId: "...", status: "...", customerId: 123 }`). Check the `status` field to determine if payment was successful. |
-| `onSubmitPending(isPending)` | `(isPending: boolean) => void`     | Fired when the form starts (`true`) or ends (`false`) network activity. Use to show/hide loading spinners.                                                                                                                        |
+| Callback                            | Type                               | Description                                                                                                                                                                                                            |
+| :---------------------------------- | :--------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onReady()`                         | `() => void`                       | Fired when the iframe has fully loaded and is interactive.                                                                                                                                                             |
+| `onError(err)`                      | `(error: string \| Error) => void` | Fired when form initialization fails (e.g., invalid configuration, network errors during initialization). **Note**: This does not fire for transaction errors. Transaction errors are handled via `onPaymentComplete`. |
+| `onPaymentComplete(data)`           | `(data: object) => void`           | Fired when payment is completed, regardless of success or failure. Receives a `TransactionDetails` object. Check the `transactionStatus` field to determine if payment was successful.                                 |
+| `onPaymentProcessing(isProcessing)` | `(isProcessing: boolean) => void`  | Fired when the form starts (`true`) or ends (`false`) network activity. Use to show/hide loading spinners.                                                                                                             |
 
 ## Example Usage
 
@@ -324,7 +348,7 @@ The following examples demonstrate how to integrate Embedded Checkout into your 
 ### Basic Integration
 
 ```javascript
-const checkout = new window.XMoneyPaymentForm({
+const checkout = await window.XMoney.paymentForm({
   container: 'payment-form-widget',
   publicKey: 'pk_test_your_key',
   orderPayload: payload, // From your server
@@ -340,7 +364,7 @@ const checkout = new window.XMoneyPaymentForm({
   onPaymentComplete: (data) => {
     console.log('Payment completed:', data)
     // Check payment status
-    if (data.status === 'complete-ok') {
+    if (data.transactionStatus === 'complete-ok') {
       window.location.href = '/checkout/success'
     } else {
       alert('Payment failed. Please try again.')
@@ -352,20 +376,16 @@ const checkout = new window.XMoneyPaymentForm({
 ### With Saved Cards
 
 ```javascript
-const checkout = new window.XMoneyPaymentForm({
+const checkout = await window.XMoney.paymentForm({
   container: 'payment-form-widget',
   publicKey: 'pk_test_your_key',
   orderPayload: payload,
   orderChecksum: checksum,
-  options: {
-    enableSavedCards: true,
-    displaySaveCardOption: true,
+  card: {
+    savedCards: { enabled: true, optInVisible: true },
   },
   onPaymentComplete: (data) => {
-    // Store customerId if returned for future use
-    if (data.customerId) {
-      localStorage.setItem('xmoney_customer_id', data.customerId)
-    }
+    console.log('Payment completed:', data)
   },
 })
 ```
@@ -373,7 +393,7 @@ const checkout = new window.XMoneyPaymentForm({
 ### With Custom Theme
 
 ```javascript
-const checkout = new window.XMoneyPaymentForm({
+const checkout = await window.XMoney.paymentForm({
   container: 'payment-form-widget',
   publicKey: 'pk_test_your_key',
   orderPayload: payload,
@@ -390,6 +410,108 @@ const checkout = new window.XMoneyPaymentForm({
   },
 })
 ```
+
+## TransactionDetails
+
+The object passed to `onPaymentComplete` has the following shape:
+
+```typescript
+interface TransactionDetails {
+  id: number
+  transactionStatus: TransactionStatusEnum
+  amount: number // numeric (not a string)
+  currencyKey: string // e.g. "EUR"
+  amountInEuro: number // numeric
+  customerData: TransactionCustomerData
+  externalOrderId: string // your system's order reference
+  description: string
+}
+```
+
+---
+
+## Standalone SDK Components
+
+In addition to `paymentForm`, there are four independent components through the `window.XMoney` namespace. Each follows the same `XMoneyBaseConfig` contract (`publicKey`, `orderPayload`, `orderChecksum`, `options`, `onReady`, `onError`, `onPaymentComplete`, `onPaymentProcessing`).
+
+### `XMoney.paymentCard`
+
+A card-only payment element (no wallet buttons).
+
+```javascript
+const card = await window.XMoney.paymentCard({
+  container: 'card-widget',
+  publicKey: 'pk_test_your_key',
+  orderPayload: payload,
+  orderChecksum: checksum,
+  card: { validationMode: 'onChange' },
+  onPaymentComplete: (data) => console.log(data),
+})
+// Available methods: updateLocale | updateAppearance | submit | validate | updateOrder | destroy
+```
+
+### `XMoney.googlePay`
+
+A standalone Google Pay button.
+
+```javascript
+const gPay = await window.XMoney.googlePay({
+  container: 'gpay-widget',
+  publicKey: 'pk_test_your_key',
+  orderPayload: payload,
+  orderChecksum: checksum,
+  onPaymentComplete: (data) => console.log(data),
+})
+// Available methods: updateOrder | destroy
+```
+
+### `XMoney.applePay`
+
+A standalone Apple Pay button.
+
+```javascript
+const aPay = await window.XMoney.applePay({
+  container: 'applepay-widget',
+  publicKey: 'pk_test_your_key',
+  orderPayload: payload,
+  orderChecksum: checksum,
+  onPaymentComplete: (data) => console.log(data),
+})
+// Available methods: updateOrder | destroy
+```
+
+### `XMoney.savedCardPayment`
+
+Triggers a payment using a previously saved card. Does **not** require a `container`.
+
+```javascript
+const saved = await window.XMoney.savedCardPayment({
+  publicKey: 'pk_test_your_key',
+  orderPayload: payload,
+  orderChecksum: checksum,
+  onPaymentComplete: (data) => console.log(data),
+})
+
+saved.pay({ cardId: 123 })
+```
+
+### `XMoney.getPaymentMethodCapabilities`
+
+Detects which wallet methods are available in the current browser/device context. Call this to show/hide wallet buttons before rendering them.
+
+```javascript
+const caps = await window.XMoney.getPaymentMethodCapabilities()
+// { googlePay: { supported: boolean, reason?: string }, applePay: { supported: boolean, reason?: string } }
+
+if (caps.googlePay.supported) {
+  // render Google Pay
+}
+if (caps.applePay.supported) {
+  // render Apple Pay
+}
+```
+
+---
 
 ## Backend API Integration
 
@@ -550,7 +672,7 @@ async function initializeCheckout() {
   const { payload, checksum } = await response.json()
 
   // Initialize Embedded Checkout
-  const checkout = new window.XMoneyPaymentForm({
+  const checkout = await window.XMoney.paymentForm({
     container: 'payment-form-widget',
     publicKey: 'pk_test_your_key',
     orderPayload: payload,

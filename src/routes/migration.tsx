@@ -139,7 +139,7 @@ function NewList({
 function MigrationPage() {
   return (
     <div className='min-h-full bg-white'>
-      <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10'>
         {/* Hero */}
         <div className='mb-10'>
           <div className='flex flex-wrap items-center gap-3 mb-4'>
@@ -163,9 +163,9 @@ function MigrationPage() {
 
         <div className='space-y-10'>
           {/* 1. Global API */}
-          <Card className='border-red-200'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl'>
-              <div className='flex items-center justify-between'>
+          <Card className='border-red-200 pt-0'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+              <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <Layout className='w-4 h-4 text-red-600' />
                   Global API
@@ -208,9 +208,9 @@ function MigrationPage() {
           </Card>
 
           {/* 2. Instantiation */}
-          <Card className='border-red-200'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl'>
-              <div className='flex items-center justify-between'>
+          <Card className='border-red-200 pt-0'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+              <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <Zap className='w-4 h-4 text-red-600' />
                   Instantiation is now async
@@ -244,9 +244,9 @@ const form = await window.XMoney.paymentForm(config);`}
           </Card>
 
           {/* 3. PaymentFormConfig */}
-          <Card className='border-red-200'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl'>
-              <div className='flex items-center justify-between'>
+          <Card className='border-red-200 pt-0'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+              <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <CreditCard className='w-4 h-4 text-red-600' />
                   XMoneyPaymentFormConfig — full comparison
@@ -584,9 +584,9 @@ interface XMoneyPaymentFormConfig  {
           </Card>
 
           {/* 4. PaymentFormInstance */}
-          <Card className='border-amber-200'>
-            <CardHeader className='pb-3 border-b border-amber-100 bg-amber-50/60 rounded-t-xl'>
-              <div className='flex items-center justify-between'>
+          <Card className='border-amber-200 pt-0'>
+            <CardHeader className='pb-3 border-b border-amber-100 bg-amber-50/60 rounded-t-xl pt-6'>
+              <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <Zap className='w-4 h-4 text-amber-600' />
                   XMoneyPaymentFormInstance — full comparison
@@ -599,7 +599,7 @@ interface XMoneyPaymentFormConfig  {
             </CardHeader>
             <CardContent className='pt-5 space-y-6'>
               <p className='text-sm text-slate-600'>
-                The instance shape is mostly the same and one removed.
+                The instance shape is mostly the same.
               </p>
 
               {/* Method comparison table */}
@@ -733,7 +733,6 @@ interface XMoneyPaymentFormInstance {
                   v2={`
 interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
   updateOrder({ orderPayload: string, orderChecksum: string }): void
-  close(): void
   destroy(): void
 
   updateLocale(locale: "en-US" | "el-GR" | "ro-RO"): void
@@ -747,7 +746,7 @@ interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
   // NEW in v2:
   validate(): {
     isValid: boolean
-    errors: Record<string, string>
+    errors: Record<string, { message: string, code: number }>
   }
 }`}
                 />
@@ -756,9 +755,9 @@ interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
           </Card>
 
           {/* 5. TransactionDetails */}
-          <Card className='border-red-200'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl'>
-              <div className='flex items-center justify-between'>
+          <Card className='border-red-200 pt-0'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+              <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <RefreshCw className='w-4 h-4 text-red-600' />
                   TransactionDetails shape
@@ -822,9 +821,9 @@ interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
               </h2>
             </div>
             <div className='space-y-6'>
-              <Card className='border-emerald-200'>
-                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl'>
-                  <div className='flex items-center justify-between'>
+              <Card className='border-emerald-200 pt-0'>
+                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-6'>
+                  <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                     <CardTitle className='text-base flex items-center gap-2'>
                       <Layers className='w-4 h-4 text-emerald-600' />
                       Four new standalone components
@@ -874,9 +873,9 @@ saved.pay({ cardId: 42 });`}
                 </CardContent>
               </Card>
 
-              <Card className='border-emerald-200'>
-                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl'>
-                  <div className='flex items-center justify-between'>
+              <Card className='border-emerald-200 pt-0'>
+                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-6'>
+                  <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                     <CardTitle className='text-base flex items-center gap-2'>
                       <Zap className='w-4 h-4 text-emerald-600' />
                       Payment method capability detection
@@ -899,9 +898,9 @@ saved.pay({ cardId: 42 });`}
                 </CardContent>
               </Card>
 
-              <Card className='border-emerald-200'>
-                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl'>
-                  <div className='flex items-center justify-between'>
+              <Card className='border-emerald-200 pt-0'>
+                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-6'>
+                  <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                     <CardTitle className='text-base flex items-center gap-2'>
                       <CheckCircle2 className='w-4 h-4 text-emerald-600' />
                       <code className='font-mono text-sm'>validate()</code> on
@@ -929,8 +928,8 @@ saved.pay({ cardId: 42 });`}
           </div>
 
           {/* Checklist */}
-          <Card className='border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50'>
-            <CardHeader className='pb-3 border-b border-blue-100 rounded-t-xl'>
+          <Card className='border-blue-200 pt-0 bg-gradient-to-br from-blue-50 to-slate-50'>
+            <CardHeader className='pb-3 border-b border-blue-100 rounded-t-xl pt-6'>
               <CardTitle className='text-base flex items-center gap-2 text-blue-800'>
                 <CheckCircle2 className='w-4 h-4' />
                 Migration checklist

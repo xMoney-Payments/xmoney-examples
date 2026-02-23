@@ -122,7 +122,7 @@ function CardBrandBadge({ type }: { type: string }) {
 
 function GooglePayBadge() {
   return (
-    <span className='flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-white shadow-sm'>
+    <span className='flex h-8 w-8 items-center justify-center rounded-lg bg-black'>
       <svg
         className='h-4 w-4'
         viewBox='0 0 24 24'
@@ -285,7 +285,6 @@ function RouteComponent() {
       setSavedCards(cards)
       setSelectedSavedCardId(cards[0]?.id ?? null)
     } catch {
-      // Failing to load saved cards is non-fatal; show empty state
       setSavedCards([])
       setSelectedSavedCardId(null)
     } finally {
@@ -576,7 +575,6 @@ const instance = await window.XMoney.paymentCard({
     validationMode: 'onBlur',
     savedCards: {
       enabled: true,
-      customerId: 'customer-12333', // unique per user
       optIn: { visible: true },
     },
     submitButton: { visible: false }, // use your own button
@@ -805,7 +803,7 @@ app.post('/api/orders', async (req, res) => {
         </div>
       </div>
       {/* Checkout content — full width, scrollable */}
-      <div className='h-full overflow-y-auto'>
+      <div className='h-full overflow-y-auto pb-8'>
         <div className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6'>
           {error && (
             <div className='flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
@@ -1430,7 +1428,7 @@ app.post('/api/orders', async (req, res) => {
               </Card>
 
               {/* Order Summary */}
-              <Card className='sticky top-20 overflow-hidden border-border/70 lg:col-span-4 pt-0'>
+              <Card className='sticky top-5 overflow-hidden border-border/70 lg:col-span-4 pt-0'>
                 <CardHeader className='border-b bg-gradient-to-r from-amber-50 to-transparent pt-6'>
                   <CardTitle className='flex items-center gap-3'>
                     <span className='flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700'>
