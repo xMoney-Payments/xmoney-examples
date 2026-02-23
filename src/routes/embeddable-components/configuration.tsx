@@ -1468,7 +1468,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
           </button>
         </div>
       ) : isWalletEmbeddable && !isEmbeddableSupported ? (
-        <div className='flex items-center justify-center m-auto h-96 w-full p-4'>
+        <div className='flex items-center justify-center m-auto min-h-96 w-full p-4'>
           <div className='w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-5 space-y-3 text-center'>
             <div className='mx-auto w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center'>
               <AlertCircle className='w-5 h-5 text-slate-500' />
@@ -1614,7 +1614,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             'transition-opacity duration-300 w-full',
             loading
               ? 'opacity-0 h-0 overflow-hidden'
-              : 'opacity-100 flex-1 flex items-center justify-center m-auto h-96 p-4'
+              : 'opacity-100 flex-1 flex items-center justify-center m-auto min-h-96 p-4'
           )}
         />
       )}
