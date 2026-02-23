@@ -25,6 +25,15 @@ import {
   type CodeTab,
 } from '@/components/three-column-layout'
 import { formatConfigToJS } from '@/lib/format-utils'
+import type {
+  XMoneyPaymentFormConfig,
+  XMoneyPaymentFormInstance,
+} from '@/types/xmoney-sdk/payment-form-sdk.types'
+import type {
+  FormButtonType,
+  Locale,
+  ValidationMode,
+} from '@/types/xmoney-sdk/sdk-base.types'
 
 export const Route = createFileRoute('/payment-form/configuration')({
   component: PaymentFormConfiguration,
@@ -39,7 +48,16 @@ function PaymentFormConfiguration() {
   const [currency, setCurrency] = useState('EUR')
 
   // Payment Form Configuration Default Options
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<{
+    locale: Locale
+    buttonType: FormButtonType
+    displaySaveCardOption: boolean
+    enableSavedCards: boolean
+    displaySubmitButton: boolean
+    enableGooglePay: boolean
+    enableApplePay: boolean
+    validationMode: ValidationMode
+  }>({
     locale: 'en-US',
     buttonType: 'pay',
     displaySaveCardOption: false,
@@ -112,7 +130,7 @@ function PaymentFormConfiguration() {
 
   useEffect(() => {
     let mounted = true
-    let sdkInstance: any = null
+    let sdkInstance: XMoneyPaymentFormInstance | null = null
 
     const initCheckout = async () => {
       setLoading(true)
@@ -145,7 +163,7 @@ function PaymentFormConfiguration() {
           checksum: data.checksum,
         })
 
-        if (window.XMoneyPaymentForm) {
+        if (window.XMoney) {
           const container = document.getElementById(
             'config-payment-form-widget'
           )
@@ -153,31 +171,29 @@ function PaymentFormConfiguration() {
           if (!container) return
           container.innerHTML = ''
 
-          const options: any = {
-            locale: config.locale,
-            buttonType: config.buttonType,
-            displaySaveCardOption: config.displaySaveCardOption,
-            displaySubmitButton: config.displaySubmitButton,
-            enableSavedCards: config.enableSavedCards,
-          }
-
-          if (config.enableGooglePay) {
-            options.googlePay = { enabled: true }
-          }
-          options.validationMode = config.validationMode
-
-          if (config.enableApplePay) {
-            options.applePay = { enabled: true }
-          }
-
-          const sdkConfig: any = {
+          const sdkConfig: XMoneyPaymentFormConfig = {
             container: 'config-payment-form-widget',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
+            card: {
+              savedCards: {
+                enabled: config.enableSavedCards,
+                optInVisible: config.displaySaveCardOption,
+              },
+              submitButton: {
+                visible: config.displaySubmitButton,
+                type: config.buttonType,
+              },
+              validationMode: config.validationMode,
+            },
+            paymentMethods: {
+              googlePay: { enabled: config.enableGooglePay },
+              applePay: { enabled: config.enableApplePay },
+            },
             options: {
-              ...options,
-              appearance: getEffectiveConfigs(),
+              locale: config.locale,
+              appearance: getEffectiveConfigs() as any,
             },
             onReady: () => {
               if (mounted) setLoading(false)
@@ -193,14 +209,13 @@ function PaymentFormConfiguration() {
                 })
               }
             },
-            onPaymentComplete: (data: any) => {
-              console.log('Payment complete', data)
+            onPaymentComplete: (transaction) => {
               if (mounted) {
-                setPaymentResult({ status: 'success', data })
+                setPaymentResult({ status: 'success', data: transaction })
               }
             },
           }
-          sdkInstance = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -230,22 +245,45 @@ function PaymentFormConfiguration() {
       value: 'client',
       label: 'payment-form.tsx',
       language: 'javascript',
-      content: `const xMoney = new XMoneyPaymentForm({
+      content: `const xMoney = await window.XMoney.paymentForm({
   container: 'payment-form-widget',
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
+  card: ${(() => {
+    const str = formatConfigToJS(
+      {
+        submitButton: { type: config.buttonType },
+        savedCards: {
+          enabled: config.enableSavedCards,
+          optInVisible: config.displaySaveCardOption,
+        },
+        validationMode: config.validationMode,
+      },
+      2
+    )
+    return str
+      .split('\n')
+      .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
+      .join('\n')
+  })()},
+    paymentMethods: ${(() => {
+      const str = formatConfigToJS(
+        {
+          googlePay: { enabled: config.enableGooglePay },
+          applePay: { enabled: config.enableApplePay },
+        },
+        2
+      )
+      return str
+        .split('\n')
+        .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
+        .join('\n')
+    })()},
   options: ${(() => {
     const str = formatConfigToJS(
       {
         locale: config.locale,
-        buttonType: config.buttonType,
-        displaySaveCardOption: config.displaySaveCardOption,
-        displaySubmitButton: config.displaySubmitButton,
-        enableSavedCards: config.enableSavedCards,
-        googlePay: config.enableGooglePay ? { enabled: true } : undefined,
-        applePay: config.enableApplePay ? { enabled: true } : undefined,
-        validationMode: config.validationMode,
         appearance: getEffectiveConfigs(),
       },
       2
@@ -510,7 +548,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
                       <Select
                         value={config.locale}
                         onValueChange={(val) =>
-                          setConfig({ ...config, locale: val })
+                          setConfig({
+                            ...config,
+                            locale: val as 'en-US' | 'el-GR' | 'ro-RO',
+                          })
                         }
                       >
                         <SelectTrigger id='locale' className='h-9'>
@@ -541,7 +582,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
                       <Select
                         value={config.buttonType}
                         onValueChange={(val) =>
-                          setConfig({ ...config, buttonType: val })
+                          setConfig({
+                            ...config,
+                            buttonType: val as FormButtonType,
+                          })
                         }
                       >
                         <SelectTrigger id='buttonType' className='h-9'>
@@ -574,7 +618,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
                       <Select
                         value={config.validationMode}
                         onValueChange={(val) =>
-                          setConfig({ ...config, validationMode: val })
+                          setConfig({
+                            ...config,
+                            validationMode: val as ValidationMode,
+                          })
                         }
                       >
                         <SelectTrigger id='validationMode' className='h-9'>

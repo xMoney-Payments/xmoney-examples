@@ -27,11 +27,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type {
-  XMoneyPaymentFormConfig,
-  XMoneyPaymentFormInstance,
-} from '@/types/xmoney-sdk/payment-form-sdk.types'
+  XMoneyPaymentCardConfig,
+  XMoneyPaymentCardInstance,
+} from '@/types/xmoney-sdk/payment-card-sdk.types'
 
-export const Route = createFileRoute('/payment-form/card-holder-verification')({
+export const Route = createFileRoute(
+  '/embeddable-components/card-holder-verification'
+)({
   component: CardHolderVerification,
 })
 
@@ -91,7 +93,6 @@ function CardHolderVerification() {
   const [paymentResult, setPaymentResult] = useState<{
     status: 'success' | 'error'
     message?: string
-    data?: any
   } | null>(null)
 
   const [initData, setInitData] = useState<{
@@ -102,7 +103,7 @@ function CardHolderVerification() {
 
   useEffect(() => {
     let mounted = true
-    let sdkInstance: XMoneyPaymentFormInstance | null = null
+    let sdkInstance: XMoneyPaymentCardInstance | null = null
 
     const initCheckout = async () => {
       setLoading(true)
@@ -135,13 +136,13 @@ function CardHolderVerification() {
 
         if (window.XMoney) {
           const container = document.getElementById(
-            'card-holder-verification-payment-form'
+            'card-holder-verification-payment-card'
           )
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: XMoneyPaymentFormConfig = {
-            container: 'card-holder-verification-payment-form',
+          const sdkConfig: XMoneyPaymentCardConfig = {
+            container: 'card-holder-verification-payment-card',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
@@ -159,7 +160,7 @@ function CardHolderVerification() {
                 ) => {
                   console.log('Card holder verification result:', result)
                   setVerificationResult(result)
-
+                  // Proceed only if status is MATCHED
                   return result.status === MatchStatusEnum.Matched
                 },
               },
@@ -184,17 +185,16 @@ function CardHolderVerification() {
                 })
               }
             },
-            onPaymentComplete: (transaction) => {
+            onPaymentComplete: () => {
               if (mounted) {
                 setLoading(false)
                 setPaymentResult({
                   status: 'success',
-                  data: transaction,
                 })
               }
             },
           }
-          sdkInstance = await window.XMoney.paymentForm(sdkConfig)
+          sdkInstance = await window.XMoney.paymentCard(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -259,7 +259,7 @@ function CardHolderVerification() {
   const codeTabs: CodeTab[] = [
     {
       value: 'client',
-      label: 'payment-form.tsx',
+      label: 'paymentCard.tsx',
       language: 'typescript',
       content: `enum MatchStatusEnum {
   Matched = 'MATCHED',
@@ -276,9 +276,9 @@ interface CardHolderVerificationResult {
   lastNameStatus?: MatchStatusEnum
 }
 
-// Initialize the payment form with card holder verification
-const checkout = await window.XMoney.paymentForm({
-  container: 'payment-form-widget',
+// Initialize the Payment Card component with card holder verification
+const checkout = await window.XMoney.paymentCard({
+  container: 'payment-card-widget',
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
@@ -304,12 +304,6 @@ const checkout = await window.XMoney.paymentForm({
   },
   onReady: () => {
     console.log('Payment form ready')
-  },
-  onError: (err) => {
-    console.error('Payment error', err) 
-  },
-  onPaymentComplete: (transaction) => {
-    console.log('Payment complete', transaction)
   }
 })`,
     },
@@ -351,7 +345,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
 
   return (
     <ThreeColumnLayout
-      title='Card Holder Verification'
+      title='Payment Card - Card Holder Verification'
       icon={<UserSquare2 className='w-4 h-4' />}
       loading={loading}
       onRefresh={() => {
@@ -370,6 +364,12 @@ const checksum = getBase64Checksum(orderData, apiKey)
               Verify the cardholder's name against bank records during payment
               to enhance security.
             </p>
+            <div className='mt-2 px-2 py-1.5 rounded-md bg-amber-50 border border-amber-200'>
+              <p className='text-[11px] text-amber-700 font-medium'>
+                ⚠️ Payment Card only - This feature is only supported by the
+                Payment Card component
+              </p>
+            </div>
           </div>
           <div className='flex-1 overflow-y-auto p-6 space-y-6'>
             {/* Test Combinations */}
@@ -582,14 +582,6 @@ const checksum = getBase64Checksum(orderData, apiKey)
           <p className='text-sm text-slate-500 mb-8 max-w-[300px] mx-auto'>
             Your payment has been processed successfully.
           </p>
-          <div className='w-full bg-slate-50 rounded-lg border border-slate-200 p-4 text-left mb-6 overflow-hidden shadow-inner'>
-            <p className='text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3'>
-              Transaction Data
-            </p>
-            <pre className='text-[10px] text-slate-700 font-mono overflow-auto max-h-[120px]'>
-              {JSON.stringify(paymentResult.data, null, 2)}
-            </pre>
-          </div>
           <button
             onClick={() => {
               setPaymentResult(null)
@@ -602,7 +594,6 @@ const checksum = getBase64Checksum(orderData, apiKey)
           </button>
         </div>
       )}
-
       {/* Error State */}
       {paymentResult?.status === 'error' && (
         <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
@@ -627,12 +618,11 @@ const checksum = getBase64Checksum(orderData, apiKey)
           </button>
         </div>
       )}
-
-      {/* Payment Form Container */}
+      {/* Payment Card Container */}
       <div
-        id='card-holder-verification-payment-form'
+        id='card-holder-verification-payment-card'
         className={cn(
-          'transition-opacity duration-300 w-full',
+          'transition-opacity duration-300 w-full p-4 py-6',
           loading || paymentResult
             ? 'opacity-0 h-0 overflow-hidden'
             : 'opacity-100 flex-1'

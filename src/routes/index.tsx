@@ -17,6 +17,8 @@ import {
   Shield,
   RefreshCw,
   ShoppingCart,
+  Layers,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -218,6 +220,125 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* Embeddable Components Section */}
+        <div className='mb-12'>
+          <div className='mb-6'>
+            <h2 className='text-2xl font-semibold text-slate-900 mb-2'>
+              Embeddable Components
+            </h2>
+            <p className='text-slate-600'>
+              Standalone embeddable components that can be dropped into any page
+              to provide payment functionality without a full payment form.
+            </p>
+          </div>
+          <div className='grid gap-4 md:grid-cols-3'>
+            <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
+              <CardHeader>
+                <div className='flex items-center gap-3 mb-2'>
+                  <Layers className='w-5 h-5 text-blue-600' />
+                  <CardTitle className='text-base'>
+                    Component Configuration
+                  </CardTitle>
+                </div>
+                <CardDescription className='text-xs mb-3'>
+                  Customize embeddable component options and settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='flex flex-col flex-1 space-y-3'>
+                <p className='text-sm text-slate-600'>
+                  Explore all available configuration options for embeddable
+                  components including locale settings, button types, validation
+                  modes, and display preferences. See how different
+                  configurations affect the component appearance and behavior in
+                  real-time.
+                </p>
+                <Link
+                  to='/embeddable-components/configuration'
+                  className='mt-auto'
+                >
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='w-full justify-between group'
+                  >
+                    <span>View Example</span>
+                    <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
+              <CardHeader>
+                <div className='flex items-center gap-3 mb-2'>
+                  <ShieldCheck className='w-5 h-5 text-blue-600' />
+                  <CardTitle className='text-base'>
+                    Card Holder Verification
+                  </CardTitle>
+                </div>
+                <CardDescription className='text-xs mb-3'>
+                  Verify cardholder name against bank records
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='flex flex-col flex-1 space-y-3'>
+                <p className='text-sm text-slate-600'>
+                  Enhance security by verifying the cardholder's name against
+                  bank records using an embeddable component. This example shows
+                  how to implement cardholder verification, handle different
+                  match statuses, and make decisions based on verification
+                  results.
+                </p>
+                <Link
+                  to='/embeddable-components/card-holder-verification'
+                  className='mt-auto'
+                >
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='w-full justify-between group'
+                  >
+                    <span>View Example</span>
+                    <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
+              <CardHeader>
+                <div className='flex items-center gap-3 mb-2'>
+                  <RefreshCw className='w-5 h-5 text-blue-600' />
+                  <CardTitle className='text-base'>Runtime Updates</CardTitle>
+                </div>
+                <CardDescription className='text-xs mb-3'>
+                  Update embeddable component options dynamically
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='flex flex-col flex-1 space-y-3'>
+                <p className='text-sm text-slate-600'>
+                  Dynamically update embeddable component settings without
+                  reloading the page. Learn how to change order details, locale,
+                  currency, and other options at runtime. Perfect for multi-step
+                  checkout flows or dynamic pricing scenarios.
+                </p>
+                <Link
+                  to='/embeddable-components/runtime-updates'
+                  className='mt-auto'
+                >
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='w-full justify-between group'
+                  >
+                    <span>View Example</span>
+                    <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Application Examples Section */}
         <div className='mb-12'>
           <div className='mb-6'>
@@ -229,7 +350,7 @@ function Dashboard() {
               form into your application for common use cases.
             </p>
           </div>
-          <div className='grid gap-4 md:grid-cols-2'>
+          <div className='grid gap-4 md:grid-cols-3'>
             <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
               <CardHeader>
                 <div className='flex items-center gap-3 mb-2'>
@@ -278,6 +399,36 @@ function Dashboard() {
                   for implementing saved payment methods in your application.
                 </p>
                 <Link to='/examples/verify-card' className='mt-auto'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='w-full justify-between group'
+                  >
+                    <span>View Example</span>
+                    <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
+              <CardHeader>
+                <div className='flex items-center gap-3 mb-2'>
+                  <Layers className='w-5 h-5 text-blue-600' />
+                  <CardTitle className='text-base'>Embedded Checkout</CardTitle>
+                </div>
+                <CardDescription className='text-xs mb-3'>
+                  Embed a full checkout experience inline on your page
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='flex flex-col flex-1 space-y-3'>
+                <p className='text-sm text-slate-600'>
+                  Embed a complete checkout flow directly within your page
+                  without redirecting customers away. This example shows how to
+                  integrate an inline checkout experience with order management,
+                  saved cards, and seamless payment processing.
+                </p>
+                <Link to='/examples/embedded-checkout' className='mt-auto'>
                   <Button
                     variant='ghost'
                     size='sm'

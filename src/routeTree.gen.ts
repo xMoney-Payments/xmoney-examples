@@ -9,13 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MigrationRouteImport } from './routes/migration'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PaymentFormRuntimeUpdatesRouteImport } from './routes/payment-form/runtime-updates'
 import { Route as PaymentFormConfigurationRouteImport } from './routes/payment-form/configuration'
 import { Route as PaymentFormCardHolderVerificationRouteImport } from './routes/payment-form/card-holder-verification'
 import { Route as ExamplesVerifyCardRouteImport } from './routes/examples/verify-card'
+import { Route as ExamplesEmbeddedCheckoutRouteImport } from './routes/examples/embedded-checkout'
 import { Route as ExamplesCheckoutRouteImport } from './routes/examples/checkout'
+import { Route as EmbeddableComponentsRuntimeUpdatesRouteImport } from './routes/embeddable-components/runtime-updates'
+import { Route as EmbeddableComponentsConfigurationRouteImport } from './routes/embeddable-components/configuration'
+import { Route as EmbeddableComponentsCardHolderVerificationRouteImport } from './routes/embeddable-components/card-holder-verification'
 
+const MigrationRoute = MigrationRouteImport.update({
+  id: '/migration',
+  path: '/migration',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -44,15 +54,44 @@ const ExamplesVerifyCardRoute = ExamplesVerifyCardRouteImport.update({
   path: '/examples/verify-card',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExamplesEmbeddedCheckoutRoute =
+  ExamplesEmbeddedCheckoutRouteImport.update({
+    id: '/examples/embedded-checkout',
+    path: '/examples/embedded-checkout',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ExamplesCheckoutRoute = ExamplesCheckoutRouteImport.update({
   id: '/examples/checkout',
   path: '/examples/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmbeddableComponentsRuntimeUpdatesRoute =
+  EmbeddableComponentsRuntimeUpdatesRouteImport.update({
+    id: '/embeddable-components/runtime-updates',
+    path: '/embeddable-components/runtime-updates',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EmbeddableComponentsConfigurationRoute =
+  EmbeddableComponentsConfigurationRouteImport.update({
+    id: '/embeddable-components/configuration',
+    path: '/embeddable-components/configuration',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EmbeddableComponentsCardHolderVerificationRoute =
+  EmbeddableComponentsCardHolderVerificationRouteImport.update({
+    id: '/embeddable-components/card-holder-verification',
+    path: '/embeddable-components/card-holder-verification',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/migration': typeof MigrationRoute
+  '/embeddable-components/card-holder-verification': typeof EmbeddableComponentsCardHolderVerificationRoute
+  '/embeddable-components/configuration': typeof EmbeddableComponentsConfigurationRoute
+  '/embeddable-components/runtime-updates': typeof EmbeddableComponentsRuntimeUpdatesRoute
   '/examples/checkout': typeof ExamplesCheckoutRoute
+  '/examples/embedded-checkout': typeof ExamplesEmbeddedCheckoutRoute
   '/examples/verify-card': typeof ExamplesVerifyCardRoute
   '/payment-form/card-holder-verification': typeof PaymentFormCardHolderVerificationRoute
   '/payment-form/configuration': typeof PaymentFormConfigurationRoute
@@ -60,7 +99,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/migration': typeof MigrationRoute
+  '/embeddable-components/card-holder-verification': typeof EmbeddableComponentsCardHolderVerificationRoute
+  '/embeddable-components/configuration': typeof EmbeddableComponentsConfigurationRoute
+  '/embeddable-components/runtime-updates': typeof EmbeddableComponentsRuntimeUpdatesRoute
   '/examples/checkout': typeof ExamplesCheckoutRoute
+  '/examples/embedded-checkout': typeof ExamplesEmbeddedCheckoutRoute
   '/examples/verify-card': typeof ExamplesVerifyCardRoute
   '/payment-form/card-holder-verification': typeof PaymentFormCardHolderVerificationRoute
   '/payment-form/configuration': typeof PaymentFormConfigurationRoute
@@ -69,7 +113,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/migration': typeof MigrationRoute
+  '/embeddable-components/card-holder-verification': typeof EmbeddableComponentsCardHolderVerificationRoute
+  '/embeddable-components/configuration': typeof EmbeddableComponentsConfigurationRoute
+  '/embeddable-components/runtime-updates': typeof EmbeddableComponentsRuntimeUpdatesRoute
   '/examples/checkout': typeof ExamplesCheckoutRoute
+  '/examples/embedded-checkout': typeof ExamplesEmbeddedCheckoutRoute
   '/examples/verify-card': typeof ExamplesVerifyCardRoute
   '/payment-form/card-holder-verification': typeof PaymentFormCardHolderVerificationRoute
   '/payment-form/configuration': typeof PaymentFormConfigurationRoute
@@ -79,7 +128,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/migration'
+    | '/embeddable-components/card-holder-verification'
+    | '/embeddable-components/configuration'
+    | '/embeddable-components/runtime-updates'
     | '/examples/checkout'
+    | '/examples/embedded-checkout'
     | '/examples/verify-card'
     | '/payment-form/card-holder-verification'
     | '/payment-form/configuration'
@@ -87,7 +141,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/migration'
+    | '/embeddable-components/card-holder-verification'
+    | '/embeddable-components/configuration'
+    | '/embeddable-components/runtime-updates'
     | '/examples/checkout'
+    | '/examples/embedded-checkout'
     | '/examples/verify-card'
     | '/payment-form/card-holder-verification'
     | '/payment-form/configuration'
@@ -95,7 +154,12 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/migration'
+    | '/embeddable-components/card-holder-verification'
+    | '/embeddable-components/configuration'
+    | '/embeddable-components/runtime-updates'
     | '/examples/checkout'
+    | '/examples/embedded-checkout'
     | '/examples/verify-card'
     | '/payment-form/card-holder-verification'
     | '/payment-form/configuration'
@@ -104,7 +168,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MigrationRoute: typeof MigrationRoute
+  EmbeddableComponentsCardHolderVerificationRoute: typeof EmbeddableComponentsCardHolderVerificationRoute
+  EmbeddableComponentsConfigurationRoute: typeof EmbeddableComponentsConfigurationRoute
+  EmbeddableComponentsRuntimeUpdatesRoute: typeof EmbeddableComponentsRuntimeUpdatesRoute
   ExamplesCheckoutRoute: typeof ExamplesCheckoutRoute
+  ExamplesEmbeddedCheckoutRoute: typeof ExamplesEmbeddedCheckoutRoute
   ExamplesVerifyCardRoute: typeof ExamplesVerifyCardRoute
   PaymentFormCardHolderVerificationRoute: typeof PaymentFormCardHolderVerificationRoute
   PaymentFormConfigurationRoute: typeof PaymentFormConfigurationRoute
@@ -113,6 +182,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/migration': {
+      id: '/migration'
+      path: '/migration'
+      fullPath: '/migration'
+      preLoaderRoute: typeof MigrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -148,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamplesVerifyCardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/examples/embedded-checkout': {
+      id: '/examples/embedded-checkout'
+      path: '/examples/embedded-checkout'
+      fullPath: '/examples/embedded-checkout'
+      preLoaderRoute: typeof ExamplesEmbeddedCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/examples/checkout': {
       id: '/examples/checkout'
       path: '/examples/checkout'
@@ -155,12 +238,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamplesCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/embeddable-components/runtime-updates': {
+      id: '/embeddable-components/runtime-updates'
+      path: '/embeddable-components/runtime-updates'
+      fullPath: '/embeddable-components/runtime-updates'
+      preLoaderRoute: typeof EmbeddableComponentsRuntimeUpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/embeddable-components/configuration': {
+      id: '/embeddable-components/configuration'
+      path: '/embeddable-components/configuration'
+      fullPath: '/embeddable-components/configuration'
+      preLoaderRoute: typeof EmbeddableComponentsConfigurationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/embeddable-components/card-holder-verification': {
+      id: '/embeddable-components/card-holder-verification'
+      path: '/embeddable-components/card-holder-verification'
+      fullPath: '/embeddable-components/card-holder-verification'
+      preLoaderRoute: typeof EmbeddableComponentsCardHolderVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MigrationRoute: MigrationRoute,
+  EmbeddableComponentsCardHolderVerificationRoute:
+    EmbeddableComponentsCardHolderVerificationRoute,
+  EmbeddableComponentsConfigurationRoute:
+    EmbeddableComponentsConfigurationRoute,
+  EmbeddableComponentsRuntimeUpdatesRoute:
+    EmbeddableComponentsRuntimeUpdatesRoute,
   ExamplesCheckoutRoute: ExamplesCheckoutRoute,
+  ExamplesEmbeddedCheckoutRoute: ExamplesEmbeddedCheckoutRoute,
   ExamplesVerifyCardRoute: ExamplesVerifyCardRoute,
   PaymentFormCardHolderVerificationRoute:
     PaymentFormCardHolderVerificationRoute,

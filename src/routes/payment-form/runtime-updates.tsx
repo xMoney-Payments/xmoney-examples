@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { getApiCredentials } from '@/lib/credentials'
-import { Settings, Globe, Palette, RefreshCw } from 'lucide-react'
+import { Settings, Globe, Palette, RefreshCw, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -16,6 +17,10 @@ import {
   ThreeColumnLayout,
   type CodeTab,
 } from '@/components/three-column-layout'
+import type {
+  XMoneyPaymentFormConfig,
+  XMoneyPaymentFormInstance,
+} from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 export const Route = createFileRoute('/payment-form/runtime-updates')({
   component: RuntimeUpdatesPage,
@@ -24,14 +29,19 @@ export const Route = createFileRoute('/payment-form/runtime-updates')({
 function RuntimeUpdatesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const sdkInstanceRef = useRef<any>(null)
+  const [paymentResult, setPaymentResult] = useState<{
+    status: 'success' | 'error'
+    message?: string
+    data?: any
+  } | null>(null)
+  const sdkInstanceRef = useRef<XMoneyPaymentFormInstance | null>(null)
 
   // Order state (for form inputs)
   const [amount, setAmount] = useState(100)
   const [currency, setCurrency] = useState('EUR')
 
   // Locale state (for form inputs)
-  const [locale, setLocale] = useState('en-US')
+  const [locale, setLocale] = useState<'en-US' | 'el-GR' | 'ro-RO'>('en-US')
 
   // Appearance state (for form inputs)
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'custom'>(
@@ -42,7 +52,9 @@ function RuntimeUpdatesPage() {
   // Applied state (what's actually applied to the SDK - used in code tabs)
   const [appliedAmount, setAppliedAmount] = useState(100)
   const [appliedCurrency, setAppliedCurrency] = useState('EUR')
-  const [appliedLocale, setAppliedLocale] = useState('en-US')
+  const [appliedLocale, setAppliedLocale] = useState<
+    'en-US' | 'el-GR' | 'ro-RO'
+  >('en-US')
   const [appliedThemeMode, setAppliedThemeMode] = useState<
     'light' | 'dark' | 'custom'
   >('light')
@@ -61,6 +73,7 @@ function RuntimeUpdatesPage() {
     const initCheckout = async () => {
       setLoading(true)
       setError(null)
+      setPaymentResult(null)
 
       try {
         const { publicKey, apiKey } = getApiCredentials()
@@ -88,25 +101,20 @@ function RuntimeUpdatesPage() {
           checksum: data.checksum,
         })
 
-        if (window.XMoneyPaymentForm) {
+        if (window.XMoney) {
           const container = document.getElementById(
             'runtime-updates-payment-form'
           )
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: any = {
+          const sdkConfig: XMoneyPaymentFormConfig = {
             container: 'runtime-updates-payment-form',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
             options: {
               locale: locale,
-              buttonType: 'pay',
-              displaySubmitButton: true,
-              displaySaveCardOption: false,
-              enableSavedCards: false,
-              validationMode: 'onBlur',
               appearance: {
                 theme: themeMode,
                 variables:
@@ -126,14 +134,19 @@ function RuntimeUpdatesPage() {
               console.error('Payment error', err)
               if (mounted) {
                 setLoading(false)
-                setError(typeof err === 'string' ? err : 'Payment failed')
+                setPaymentResult({
+                  status: 'error',
+                  message: typeof err === 'string' ? err : 'Payment failed',
+                })
               }
             },
-            onPaymentComplete: (data: any) => {
-              console.log('Payment complete', data)
+            onPaymentComplete: (transaction: any) => {
+              if (mounted) {
+                setPaymentResult({ status: 'success', data: transaction })
+              }
             },
           }
-          sdkInstanceRef.current = new window.XMoneyPaymentForm(sdkConfig)
+          sdkInstanceRef.current = await window.XMoney.paymentForm(sdkConfig)
         }
       } catch (err) {
         console.error(err)
@@ -181,7 +194,10 @@ function RuntimeUpdatesPage() {
       const data = await response.json()
 
       // Update the form instance without reloading
-      sdkInstanceRef.current.updateOrder(data.payload, data.checksum)
+      sdkInstanceRef.current.updateOrder({
+        orderPayload: data.payload,
+        orderChecksum: data.checksum,
+      })
       setInitData({
         publicKey,
         payload: data.payload,
@@ -228,7 +244,7 @@ function RuntimeUpdatesPage() {
       label: 'payment-form.tsx',
       language: 'javascript',
       content: `// Initialize the payment form
-const checkout = new XMoneyPaymentForm({
+const checkout = await window.XMoney.paymentForm({
   container: 'payment-form-widget',
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
@@ -255,7 +271,7 @@ async function updateOrderAmount(newAmount, newCurrency) {
   const { payload, checksum } = await response.json()
   
   // Update without reloading the form
-  checkout.updateOrder(payload, checksum)
+  checkout.updateOrder({ orderPayload: payload, orderChecksum: checksum })
 }
 
 // Update locale dynamically
@@ -304,11 +320,11 @@ const orderData = {
 }
 
 const apiKey = '<YOUR_API_KEY>'
-const payload = getBase64JsonRequest(orderData)
-const checksum = getBase64Checksum(orderData, apiKey)
+const orderPayload = getBase64JsonRequest(orderData)
+const orderChecksum = getBase64Checksum(orderData, apiKey)
 
 // Return payload and checksum to frontend
-// Frontend can call checkout.updateOrder(payload, checksum) to update`,
+// Frontend can call checkout.updateOrder({orderPayload, orderChecksum}) to update`,
     },
   ]
 
@@ -405,7 +421,12 @@ const checksum = getBase64Checksum(orderData, apiKey)
                   <Label htmlFor='locale' className='text-xs'>
                     Locale
                   </Label>
-                  <Select value={locale} onValueChange={setLocale}>
+                  <Select
+                    value={locale}
+                    onValueChange={(value) =>
+                      setLocale(value as 'en-US' | 'el-GR' | 'ro-RO')
+                    }
+                  >
                     <SelectTrigger id='locale' className='h-9 text-sm'>
                       <SelectValue />
                     </SelectTrigger>
@@ -496,7 +517,75 @@ const checksum = getBase64Checksum(orderData, apiKey)
         </div>
       }
     >
-      <div id='runtime-updates-payment-form' />
+      {/* Success and Error Views */}
+      {paymentResult?.status === 'success' && (
+        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+          <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
+            <Check className='w-8 h-8 text-green-600' />
+          </div>
+          <h3 className='text-xl font-bold text-slate-900 mb-2'>
+            Payment Successful!
+          </h3>
+          <p className='text-sm text-slate-500 mb-8 max-w-[250px] mx-auto'>
+            Your transaction has been processed securely.
+          </p>
+          <div className='w-full bg-slate-50 rounded-lg border border-slate-200 p-4 text-left mb-6 overflow-hidden shadow-inner'>
+            <p className='text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3'>
+              Transaction Data
+            </p>
+            <pre className='text-[10px] text-slate-700 font-mono overflow-auto max-h-[120px]'>
+              {JSON.stringify(paymentResult.data, null, 2)}
+            </pre>
+          </div>
+          <button
+            onClick={() => {
+              setPaymentResult(null)
+              setLoading(true)
+              setTimeout(() => {
+                setLoading(false)
+                window.location.reload()
+              }, 100)
+            }}
+            className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full shadow-md'
+          >
+            Start New Payment
+          </button>
+        </div>
+      )}
+
+      {paymentResult?.status === 'error' && (
+        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+          <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
+            <div className='text-red-600 font-bold text-2xl'>!</div>
+          </div>
+          <h3 className='text-xl font-bold text-slate-900 mb-2'>
+            Payment Failed
+          </h3>
+          <p className='text-sm text-slate-500 mb-8 max-w-[250px] mx-auto'>
+            {paymentResult.message}
+          </p>
+          <button
+            onClick={() => {
+              setPaymentResult(null)
+              window.location.reload()
+            }}
+            className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white w-full shadow-md'
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* Widget Container */}
+      <div
+        id='runtime-updates-payment-form'
+        className={cn(
+          'transition-opacity duration-300 w-full',
+          loading || paymentResult
+            ? 'opacity-0 h-0 overflow-hidden'
+            : 'opacity-100 flex-1'
+        )}
+      />
     </ThreeColumnLayout>
   )
 }

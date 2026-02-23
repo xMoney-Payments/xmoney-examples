@@ -1,7 +1,52 @@
-import type { TransactionDetails } from '../checkout-types'
+import type { TransactionDetails } from '../checkout.types'
+
+export type FormButtonType =
+  | 'book'
+  | 'buy'
+  | 'checkout'
+  | 'donate'
+  | 'order'
+  | 'pay'
+  | 'subscribe'
+  | 'topUp'
+export type ValidationMode = 'onSubmit' | 'onChange' | 'onBlur' | 'onTouched'
+export type Theme = 'light' | 'dark' | 'custom'
+export type Locale = 'en-US' | 'el-GR' | 'ro-RO'
+
+export type GooglePayButtonType =
+  | 'book'
+  | 'buy'
+  | 'checkout'
+  | 'donate'
+  | 'order'
+  | 'plain'
+  | 'pay'
+  | 'subscribe'
+export type GooglePayButtonColor = 'white' | 'black'
+export type GooglePayButtonBorderType = 'default_border' | 'no_border'
+
+export type ApplePayButtonStyle = 'white' | 'black' | 'white-outline'
+export type ApplePayButtonType =
+  | 'add-money'
+  | 'book'
+  | 'buy'
+  | 'checkout'
+  | 'contribute'
+  | 'continue'
+  | 'donate'
+  | 'order'
+  | 'plain'
+  | 'pay'
+  | 'reload'
+  | 'rent'
+  | 'set-up'
+  | 'subscribe'
+  | 'support'
+  | 'tip'
+  | 'top-up'
 
 /**
- * Configuration options for initializing and customizing the xMoney payment form.
+ * Base configuration options shared by all xMoney SDK methods.
  */
 export interface XMoneyBaseConfig {
   /**
@@ -40,18 +85,6 @@ export interface XMoneyBaseConfig {
   publicKey: string
 
   /**
-   * Options for customizing the appearance and behavior of form elements.
-   */
-  options?: {
-    /**
-     * Enables background data refresh for the payment form.
-     *
-     * @defaultValue `true`
-     */
-    enableBackgroundRefresh?: boolean
-  }
-
-  /**
    * Callback executed when the payment form is fully initialized and ready.
    */
   onReady?: () => void
@@ -67,11 +100,14 @@ export interface XMoneyBaseConfig {
    * Callback executed when the payment is completed.
    *
    * @param data - Payment completion response data.
-   *
-   * @remarks
-   * This callback will **not** be triggered if `enableBackgroundRefresh` is `false`.
    */
   onPaymentComplete?: (data: TransactionDetails) => void
+  /**
+   * Callback executed when the form submission state changes.
+   *
+   * @param isProcessing - `true` if the form is submitting, `false` otherwise.
+   */
+  onPaymentProcessing?: (isProcessing: boolean) => void
 }
 
 export interface XMoneyBaseInstance {
@@ -88,14 +124,6 @@ export interface XMoneyBaseInstance {
     orderPayload: string
     orderChecksum: string
   }) => void
-
-  /**
-   * Closes the payment form.
-   *
-   * @remarks
-   * This does not destroy the form instance. Use {@link destroy} for full cleanup.
-   */
-  close: () => void
 
   /**
    * Cleans up and completely destroys the payment form instance.
