@@ -1,4 +1,12 @@
-import { Home, Inbox, Settings, ShoppingCart, RefreshCw, UserSquare2 } from 'lucide-react'
+import {
+  Home,
+  Inbox,
+  Settings,
+  ShoppingCart,
+  RefreshCw,
+  UserSquare2,
+  ArrowUpCircle,
+} from 'lucide-react'
 
 import {
   Sidebar,
@@ -45,6 +53,14 @@ const items = [
   },
 ]
 
+const docsItems = [
+  {
+    title: 'Migration v1 → v2',
+    url: '/migration',
+    icon: ArrowUpCircle,
+  },
+]
+
 export function AppSidebar() {
   return (
     <Sidebar>
@@ -54,6 +70,23 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Documentation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {docsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <a href={item.url}>

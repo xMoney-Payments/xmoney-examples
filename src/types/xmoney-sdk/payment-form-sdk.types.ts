@@ -1,13 +1,13 @@
-import type { XMoneyPaymentCardConfig } from './payment-card-sdk.types'
+import type {
+  XMoneyPaymentCardConfig,
+  XMoneyPaymentCardInstance,
+} from './payment-card-sdk.types'
 import type {
   ApplePayButtonStyle,
   ApplePayButtonType,
   GooglePayButtonBorderType,
   GooglePayButtonColor,
   GooglePayButtonType,
-  Locale,
-  Theme,
-  XMoneyBaseInstance,
 } from './sdk-base.types'
 
 /**
@@ -89,34 +89,4 @@ export interface XMoneyPaymentFormConfig extends XMoneyPaymentCardConfig {
 /**
  * Represents an instance of the XMoney payment form, providing methods to interact with and manage the form.
  */
-export interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
-  /**
-   * Updates the locale of the payment form.
-   *
-   * @param locale - Locale to set for the form.
-   */
-  updateLocale: (locale: Locale) => void
-
-  /**
-   * Updates the appearance of the payment form.
-   *
-   * @param appearance - Theme, CSS variables, and/or CSS rules to apply.
-   */
-  updateAppearance: (appearance: {
-    theme?: Theme
-    variables?: Record<string, string>
-    rules?: Record<string, Record<string, string>>
-  }) => void
-
-  /**
-   * Submits the payment.
-   */
-  submit: () => void
-
-  /**
-   * Validates the payment fields and returns the validation result.
-   *
-   * @returns An object containing the validation status and any errors found.
-   */
-  validate: () => { isValid: boolean; errors: Record<string, string> }
-}
+export interface XMoneyPaymentFormInstance extends XMoneyPaymentCardInstance {}

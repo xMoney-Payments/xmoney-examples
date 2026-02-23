@@ -209,9 +209,9 @@ function PaymentFormConfiguration() {
                 })
               }
             },
-            onPaymentComplete: () => {
+            onPaymentComplete: (transaction) => {
               if (mounted) {
-                setPaymentResult({ status: 'success', data })
+                setPaymentResult({ status: 'success', data: transaction })
               }
             },
           }

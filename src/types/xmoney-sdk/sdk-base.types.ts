@@ -126,14 +126,6 @@ export interface XMoneyBaseInstance {
   }) => void
 
   /**
-   * Closes the payment form.
-   *
-   * @remarks
-   * This does not destroy the form instance. Use {@link destroy} for full cleanup.
-   */
-  close: () => void
-
-  /**
    * Cleans up and completely destroys the payment form instance.
    *
    * @remarks

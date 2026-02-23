@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { getApiCredentials } from '@/lib/credentials'
-import { Settings, Globe, Palette, RefreshCw } from 'lucide-react'
+import { Settings, Globe, Palette, RefreshCw, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -28,6 +29,11 @@ export const Route = createFileRoute('/payment-form/runtime-updates')({
 function RuntimeUpdatesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [paymentResult, setPaymentResult] = useState<{
+    status: 'success' | 'error'
+    message?: string
+    data?: any
+  } | null>(null)
   const sdkInstanceRef = useRef<XMoneyPaymentFormInstance | null>(null)
 
   // Order state (for form inputs)
@@ -67,6 +73,7 @@ function RuntimeUpdatesPage() {
     const initCheckout = async () => {
       setLoading(true)
       setError(null)
+      setPaymentResult(null)
 
       try {
         const { publicKey, apiKey } = getApiCredentials()
@@ -106,16 +113,6 @@ function RuntimeUpdatesPage() {
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
-            card: {
-              validationMode: 'onBlur',
-              submitButton: {
-                type: 'pay',
-              },
-              savedCards: {
-                enabled: false,
-                optInVisible: false,
-              },
-            },
             options: {
               locale: locale,
               appearance: {
@@ -137,11 +134,16 @@ function RuntimeUpdatesPage() {
               console.error('Payment error', err)
               if (mounted) {
                 setLoading(false)
-                setError(typeof err === 'string' ? err : 'Payment failed')
+                setPaymentResult({
+                  status: 'error',
+                  message: typeof err === 'string' ? err : 'Payment failed',
+                })
               }
             },
-            onPaymentComplete: (data: any) => {
-              console.log('Payment complete', data)
+            onPaymentComplete: (transaction: any) => {
+              if (mounted) {
+                setPaymentResult({ status: 'success', data: transaction })
+              }
             },
           }
           sdkInstanceRef.current = await window.XMoney.paymentForm(sdkConfig)
@@ -515,7 +517,75 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
         </div>
       }
     >
-      <div id='runtime-updates-payment-form' />
+      {/* Success and Error Views */}
+      {paymentResult?.status === 'success' && (
+        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+          <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
+            <Check className='w-8 h-8 text-green-600' />
+          </div>
+          <h3 className='text-xl font-bold text-slate-900 mb-2'>
+            Payment Successful!
+          </h3>
+          <p className='text-sm text-slate-500 mb-8 max-w-[250px] mx-auto'>
+            Your transaction has been processed securely.
+          </p>
+          <div className='w-full bg-slate-50 rounded-lg border border-slate-200 p-4 text-left mb-6 overflow-hidden shadow-inner'>
+            <p className='text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3'>
+              Transaction Data
+            </p>
+            <pre className='text-[10px] text-slate-700 font-mono overflow-auto max-h-[120px]'>
+              {JSON.stringify(paymentResult.data, null, 2)}
+            </pre>
+          </div>
+          <button
+            onClick={() => {
+              setPaymentResult(null)
+              setLoading(true)
+              setTimeout(() => {
+                setLoading(false)
+                window.location.reload()
+              }, 100)
+            }}
+            className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full shadow-md'
+          >
+            Start New Payment
+          </button>
+        </div>
+      )}
+
+      {paymentResult?.status === 'error' && (
+        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+          <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
+            <div className='text-red-600 font-bold text-2xl'>!</div>
+          </div>
+          <h3 className='text-xl font-bold text-slate-900 mb-2'>
+            Payment Failed
+          </h3>
+          <p className='text-sm text-slate-500 mb-8 max-w-[250px] mx-auto'>
+            {paymentResult.message}
+          </p>
+          <button
+            onClick={() => {
+              setPaymentResult(null)
+              window.location.reload()
+            }}
+            className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white w-full shadow-md'
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* Widget Container */}
+      <div
+        id='runtime-updates-payment-form'
+        className={cn(
+          'transition-opacity duration-300 w-full',
+          loading || paymentResult
+            ? 'opacity-0 h-0 overflow-hidden'
+            : 'opacity-100 flex-1'
+        )}
+      />
     </ThreeColumnLayout>
   )
 }
