@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getApiCredentials } from '@/lib/credentials'
 import { cn } from '@/lib/utils'
 import {
@@ -10,6 +10,8 @@ import {
   AlertCircle,
   TestTube,
   Check,
+  Pencil,
+  PlayCircle,
 } from 'lucide-react'
 import {
   ThreeColumnLayout,
@@ -26,10 +28,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import type {
   XMoneyPaymentFormConfig,
   XMoneyPaymentFormInstance,
 } from '@/types/xmoney-sdk/payment-form-sdk.types'
+
+type VerificationBehavior = 'auto' | 'always_continue' | 'always_cancel'
+
+const STORAGE_KEY = 'chv-settings'
+
+interface ChvPersistedSettings {
+  firstName: string
+  middleName: string
+  lastName: string
+  behavior: VerificationBehavior
+}
+
+function loadPersistedSettings(): ChvPersistedSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return { firstName: 'John', middleName: '', lastName: 'Doe', behavior: 'auto' }
+}
+
+function persistSettings(settings: ChvPersistedSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+  } catch {}
+}
+
+const testScenarios = [
+  { status: 'MATCHED' as const, firstName: 'John', lastName: 'Doe' },
+  { status: 'NOT_MATCHED' as const, firstName: 'Michael', lastName: 'Brown' },
+  { status: 'PARTIAL_MATCHED' as const, firstName: 'Sarah', lastName: 'Johnson' },
+  { status: 'NOT_VERIFIED' as const, firstName: 'David', lastName: 'Smith' },
+  { status: 'NOT_SUPPORTED' as const, firstName: 'Emily', lastName: 'Davis' },
+]
 
 export const Route = createFileRoute('/payment-form/card-holder-verification')({
   component: CardHolderVerification,
@@ -42,46 +80,40 @@ function CardHolderVerification() {
   const [amount] = useState(50)
   const [currency] = useState('EUR')
 
+  // Restore persisted settings
+  const [persisted] = useState(loadPersistedSettings)
+
   // Card Holder Verification Data
   const [verificationData, setVerificationData] = useState({
-    firstName: 'John',
-    middleName: '',
-    lastName: 'Doe',
+    firstName: persisted.firstName,
+    middleName: persisted.middleName,
+    lastName: persisted.lastName,
   })
 
-  // Test scenario mapping
-  const testScenarios = [
-    {
-      status: 'MATCHED' as const,
-      firstName: 'John',
-      lastName: 'Doe',
-      displayName: 'John Doe',
-    },
-    {
-      status: 'NOT_MATCHED' as const,
-      firstName: 'Michael',
-      lastName: 'Brown',
-      displayName: 'Michael Brown',
-    },
-    {
-      status: 'PARTIAL_MATCHED' as const,
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      displayName: 'Sarah Johnson',
-    },
-    {
-      status: 'NOT_VERIFIED' as const,
-      firstName: 'David',
-      lastName: 'Smith',
-      displayName: 'David Smith',
-    },
-    {
-      status: 'NOT_SUPPORTED' as const,
-      firstName: 'Emily',
-      lastName: 'Davis',
-      displayName: 'Emily Davis',
-    },
-  ]
+  // Local input state (not tied to SDK reinit)
+  const [inputFirstName, setInputFirstName] = useState(persisted.firstName)
+  const [inputMiddleName, setInputMiddleName] = useState(persisted.middleName)
+  const [inputLastName, setInputLastName] = useState(persisted.lastName)
+
+  // Track active scenario selection
+  const [activeScenario, setActiveScenario] = useState<string>(() => {
+    const match = testScenarios.find(
+      (s) =>
+        s.firstName === persisted.firstName &&
+        s.lastName === persisted.lastName &&
+        persisted.middleName === ''
+    )
+    return match?.status ?? ''
+  })
+
+  // Verification behavior (ref to avoid SDK reinit on change)
+  const [verificationBehavior, setVerificationBehavior] =
+    useState<VerificationBehavior>(persisted.behavior)
+  const verificationBehaviorRef = useRef<VerificationBehavior>(verificationBehavior)
+  verificationBehaviorRef.current = verificationBehavior
+
+  // Snapshot of name sent to SDK (for display alongside result)
+  const [sentName, setSentName] = useState(verificationData)
 
   // Verification result
   const [verificationResult, setVerificationResult] =
@@ -147,7 +179,7 @@ function CardHolderVerification() {
             orderChecksum: data.checksum,
             card: {
               validationMode: 'onBlur',
-              savedCards: { enabled: false }, // Disable saved cards for this demo
+              savedCards: { enabled: false },
               cardHolderVerification: {
                 name: {
                   firstName: verificationData.firstName,
@@ -159,7 +191,11 @@ function CardHolderVerification() {
                 ) => {
                   console.log('Card holder verification result:', result)
                   setVerificationResult(result)
+                  setSentName({ ...verificationData })
 
+                  const behavior = verificationBehaviorRef.current
+                  if (behavior === 'always_continue') return true
+                  if (behavior === 'always_cancel') return false
                   return result.status === MatchStatusEnum.Matched
                 },
               },
@@ -283,7 +319,7 @@ const checkout = await window.XMoney.paymentForm({
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
   card: {
-    savedCards: { enabled: false }, // Disable saved cards for this demo
+    savedCards: { enabled: false },
     cardHolderVerification: {
       name: {
         firstName: '${verificationData.firstName}',
@@ -296,9 +332,10 @@ const checkout = await window.XMoney.paymentForm({
         // result.firstNameStatus?: MatchStatusEnum
         // result.middleNameStatus?: MatchStatusEnum
         // result.lastNameStatus?: MatchStatusEnum
-        
-        // Proceed with payment only if status is MATCHED
-        return result.status === MatchStatusEnum.Matched
+
+        // Return true to proceed with payment, false to cancel
+        // You can decide based on the result or your own business logic
+        ${verificationBehavior === 'always_continue' ? 'return true // Always proceed with payment' : verificationBehavior === 'always_cancel' ? 'return false // Always cancel payment' : 'return result.status === MatchStatusEnum.Matched'}
       }
     }
   },
@@ -381,24 +418,27 @@ const checksum = getBase64Checksum(orderData, apiKey)
                 </h3>
               </div>
               <p className='text-xs text-slate-600'>
-                Select a test scenario to simulate different verification
-                results
+                Select a predefined scenario or enter a custom name below
               </p>
               <Select
-                value={
-                  testScenarios.find(
-                    (scenario) =>
-                      scenario.firstName === verificationData.firstName &&
-                      scenario.lastName === verificationData.lastName
-                  )?.status || ''
-                }
+                value={activeScenario}
                 onValueChange={(value) => {
                   const scenario = testScenarios.find((s) => s.status === value)
                   if (scenario) {
+                    setActiveScenario(value)
+                    setInputFirstName(scenario.firstName)
+                    setInputMiddleName('')
+                    setInputLastName(scenario.lastName)
                     setVerificationData({
                       firstName: scenario.firstName,
                       middleName: '',
                       lastName: scenario.lastName,
+                    })
+                    persistSettings({
+                      firstName: scenario.firstName,
+                      middleName: '',
+                      lastName: scenario.lastName,
+                      behavior: verificationBehavior,
                     })
                   }
                 }}
@@ -409,9 +449,137 @@ const checksum = getBase64Checksum(orderData, apiKey)
                 <SelectContent>
                   {testScenarios.map((scenario) => (
                     <SelectItem key={scenario.status} value={scenario.status}>
-                      {scenario.status} - {scenario.displayName}
+                      {scenario.status} - {scenario.firstName} {scenario.lastName}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className='h-px bg-slate-200' />
+
+            {/* Manual Name Input */}
+            <div className='space-y-3'>
+              <div className='flex items-center gap-2'>
+                <Pencil className='w-4 h-4 text-slate-600' />
+                <h3 className='text-sm font-semibold text-slate-900'>
+                  Custom Name
+                </h3>
+              </div>
+              <p className='text-xs text-slate-600'>
+                Edit the name fields and apply to reinitialize the form
+              </p>
+              <div className='space-y-2'>
+                <div>
+                  <Label htmlFor='chv-firstName' className='text-xs text-slate-600'>
+                    First Name
+                  </Label>
+                  <Input
+                    id='chv-firstName'
+                    value={inputFirstName}
+                    onChange={(e) => {
+                      setInputFirstName(e.target.value)
+                      setActiveScenario('')
+                    }}
+                    className='h-8 text-sm mt-1'
+                    placeholder='e.g. John'
+                  />
+                </div>
+                <div>
+                  <Label htmlFor='chv-middleName' className='text-xs text-slate-600'>
+                    Middle Name
+                  </Label>
+                  <Input
+                    id='chv-middleName'
+                    value={inputMiddleName}
+                    onChange={(e) => {
+                      setInputMiddleName(e.target.value)
+                      setActiveScenario('')
+                    }}
+                    className='h-8 text-sm mt-1'
+                    placeholder='(optional)'
+                  />
+                </div>
+                <div>
+                  <Label htmlFor='chv-lastName' className='text-xs text-slate-600'>
+                    Last Name
+                  </Label>
+                  <Input
+                    id='chv-lastName'
+                    value={inputLastName}
+                    onChange={(e) => {
+                      setInputLastName(e.target.value)
+                      setActiveScenario('')
+                    }}
+                    className='h-8 text-sm mt-1'
+                    placeholder='e.g. Doe'
+                  />
+                </div>
+              </div>
+              <Button
+                size='sm'
+                className='w-full'
+                disabled={
+                  inputFirstName === verificationData.firstName &&
+                  inputMiddleName === verificationData.middleName &&
+                  inputLastName === verificationData.lastName
+                }
+                onClick={() => {
+                  setVerificationData({
+                    firstName: inputFirstName,
+                    middleName: inputMiddleName,
+                    lastName: inputLastName,
+                  })
+                  persistSettings({
+                    firstName: inputFirstName,
+                    middleName: inputMiddleName,
+                    lastName: inputLastName,
+                    behavior: verificationBehavior,
+                  })
+                }}
+              >
+                Apply & Reinitialize
+              </Button>
+            </div>
+
+            <div className='h-px bg-slate-200' />
+
+            {/* Payment Decision */}
+            <div className='space-y-3'>
+              <div className='flex items-center gap-2'>
+                <PlayCircle className='w-4 h-4 text-slate-600' />
+                <h3 className='text-sm font-semibold text-slate-900'>
+                  Payment Decision
+                </h3>
+              </div>
+              <p className='text-xs text-slate-600'>
+                Control whether the payment proceeds after verification
+              </p>
+              <Select
+                value={verificationBehavior}
+                onValueChange={(value: string) => {
+                  setVerificationBehavior(value as VerificationBehavior)
+                  persistSettings({
+                    firstName: verificationData.firstName,
+                    middleName: verificationData.middleName,
+                    lastName: verificationData.lastName,
+                    behavior: value as VerificationBehavior,
+                  })
+                }}
+              >
+                <SelectTrigger className='h-9 text-sm'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='auto'>
+                    Auto (proceed only on MATCHED)
+                  </SelectItem>
+                  <SelectItem value='always_continue'>
+                    Always continue payment
+                  </SelectItem>
+                  <SelectItem value='always_cancel'>
+                    Always cancel payment
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -477,9 +645,14 @@ const checksum = getBase64Checksum(orderData, apiKey)
                       <div className='space-y-2'>
                         {verificationResult.firstNameStatus && (
                           <div className='flex items-center justify-between py-2 border-b border-slate-100 last:border-0'>
-                            <span className='text-sm text-slate-700'>
-                              First Name
-                            </span>
+                            <div className='flex flex-col'>
+                              <span className='text-sm text-slate-700'>
+                                First Name
+                              </span>
+                              <span className='text-xs text-slate-400 font-mono'>
+                                &quot;{sentName.firstName}&quot;
+                              </span>
+                            </div>
                             <div className='flex items-center gap-2'>
                               {getStatusIcon(
                                 verificationResult.firstNameStatus
@@ -502,9 +675,14 @@ const checksum = getBase64Checksum(orderData, apiKey)
                         )}
                         {verificationResult.middleNameStatus && (
                           <div className='flex items-center justify-between py-2 border-b border-slate-100 last:border-0'>
-                            <span className='text-sm text-slate-700'>
-                              Middle Name
-                            </span>
+                            <div className='flex flex-col'>
+                              <span className='text-sm text-slate-700'>
+                                Middle Name
+                              </span>
+                              <span className='text-xs text-slate-400 font-mono'>
+                                &quot;{sentName.middleName}&quot;
+                              </span>
+                            </div>
                             <div className='flex items-center gap-2'>
                               {getStatusIcon(
                                 verificationResult.middleNameStatus
@@ -527,9 +705,14 @@ const checksum = getBase64Checksum(orderData, apiKey)
                         )}
                         {verificationResult.lastNameStatus && (
                           <div className='flex items-center justify-between py-2 border-b border-slate-100 last:border-0'>
-                            <span className='text-sm text-slate-700'>
-                              Last Name
-                            </span>
+                            <div className='flex flex-col'>
+                              <span className='text-sm text-slate-700'>
+                                Last Name
+                              </span>
+                              <span className='text-xs text-slate-400 font-mono'>
+                                &quot;{sentName.lastName}&quot;
+                              </span>
+                            </div>
                             <div className='flex items-center gap-2'>
                               {getStatusIcon(verificationResult.lastNameStatus)}
                               <span
