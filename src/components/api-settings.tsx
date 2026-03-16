@@ -14,7 +14,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Globe, Key, Lock, Check, ShieldCheck, AlertCircle } from 'lucide-react'
 import { useLocalStorage } from '@/hooks/use-local-storage'
+import { useSessionStorage } from '@/hooks/use-session-storage'
 import { cn } from '@/lib/utils'
+import { maskSecretKey } from '@/lib/credentials'
 
 export function ApiSettings() {
   const [storedSiteId, setStoredSiteId] = useLocalStorage('xmoney-site-id', '')
@@ -22,7 +24,7 @@ export function ApiSettings() {
     'xmoney-public-key',
     ''
   )
-  const [storedSecretKey, setStoredSecretKey] = useLocalStorage(
+  const [storedSecretKey, setStoredSecretKey] = useSessionStorage(
     'xmoney-secret-key',
     ''
   )
@@ -31,6 +33,25 @@ export function ApiSettings() {
   const [publicKey, setPublicKey] = useState(storedPublicKey)
   const [secretKey, setSecretKey] = useState(storedSecretKey)
   const [isSaved, setIsSaved] = useState(false)
+  const [isSecretKeyFocused, setIsSecretKeyFocused] = useState(false)
+
+  // Migrate secret key from localStorage to sessionStorage (one-time cleanup)
+  useEffect(() => {
+    const legacyKey = window.localStorage.getItem('xmoney-secret-key')
+    if (legacyKey) {
+      try {
+        const parsed = JSON.parse(legacyKey)
+        if (parsed && !storedSecretKey) {
+          setStoredSecretKey(parsed)
+        }
+      } catch {
+        if (legacyKey && !storedSecretKey) {
+          setStoredSecretKey(legacyKey)
+        }
+      }
+      window.localStorage.removeItem('xmoney-secret-key')
+    }
+  }, [])
 
   // Sync local state when stored state changes
   useEffect(() => {
@@ -291,7 +312,19 @@ export function ApiSettings() {
                 <Input
                   id='secretKey'
                   type='text'
-                  value={secretKey}
+                  value={
+                    isSecretKeyFocused
+                      ? secretKey
+                      : storedSecretKey
+                        ? maskSecretKey(storedSecretKey)
+                        : secretKey
+                  }
+                  readOnly={!isSecretKeyFocused && !!storedSecretKey}
+                  onFocus={() => {
+                    setIsSecretKeyFocused(true)
+                    setSecretKey(storedSecretKey)
+                  }}
+                  onBlur={() => setIsSecretKeyFocused(false)}
                   onChange={(e) => {
                     setSecretKey(e.target.value)
                     if (errors.secretKey)
@@ -316,7 +349,8 @@ export function ApiSettings() {
                   <span className='font-bold'>⚠️ Warning:</span> The Secret Key
                   is used in these examples for demo purposes only. It should
                   never be exposed on the frontend and must only be used on the
-                  backend. This setup is for illustration and convenience only.
+                  backend. For safety, the secret key is stored in session
+                  storage and will be cleared when the browser tab is closed.
                 </p>
               </div>
             </div>
