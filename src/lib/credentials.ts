@@ -1,10 +1,12 @@
 /**
- * Helper to retrieve xMoney API credentials from localStorage.
- * Handles the JSON parsing required because useLocalStorage hook stringifies values.
+ * Helper to retrieve xMoney API credentials.
+ * Site ID and public key are stored in localStorage; the secret key is stored
+ * in sessionStorage so it is cleared when the browser session ends.
  */
 
 const TEST_ENV = 'test'
 const LIVE_ENV = 'live'
+const SECRET_KEY_REGEXP = new RegExp(`^sk_(${TEST_ENV}|${LIVE_ENV})_(.+)$`)
 
 interface ApiCredentials {
   siteId: string
@@ -15,41 +17,55 @@ interface ApiCredentials {
 }
 
 function extractTokenFromSecretKey(secretKey: string): string {
-  const regexp = new RegExp(`^sk_(${TEST_ENV}|${LIVE_ENV})_(.+)$`)
-  const match = secretKey.match(regexp)
-
+  const match = secretKey.match(SECRET_KEY_REGEXP)
   return match ? match[2] : secretKey
 }
 
 export function getEnvironmentFromSecretKey(
   secretKey: string
 ): 'test' | 'live' {
-  const regexp = new RegExp(`^sk_(${TEST_ENV}|${LIVE_ENV})_(.+)$`)
-  const match = secretKey.match(regexp)
-
+  const match = secretKey.match(SECRET_KEY_REGEXP)
   if (match && match[1] === LIVE_ENV) {
     return 'live'
   }
   return 'test'
 }
 
-function getStoredValue(key: string): string {
+function getStoredValue(
+  key: string,
+  storage: 'local' | 'session' = 'local'
+): string {
   if (typeof window === 'undefined') return ''
 
-  const item = localStorage.getItem(key)
+  const store = storage === 'session' ? sessionStorage : localStorage
+  const item = store.getItem(key)
   if (!item) return ''
 
   try {
-    // useLocalStorage stores values as JSON strings (e.g. "\"value\"")
     return JSON.parse(item)
   } catch {
-    // Fallback if value was stored as raw string
     return item
   }
 }
 
+export function maskSecretKey(secretKey: string): string {
+  if (!secretKey) return ''
+
+  const match = secretKey.match(SECRET_KEY_REGEXP)
+  if (!match) return secretKey
+
+  const prefix = `sk_${match[1]}_`
+  const token = match[2]
+
+  if (token.length <= 6) {
+    return `${prefix}${token[0]}${'*'.repeat(token.length - 2)}${token[token.length - 1]}`
+  }
+
+  return `${prefix}${token.slice(0, 3)}****${token.slice(-3)}`
+}
+
 export function getApiCredentials(): ApiCredentials {
-  const secretKey = getStoredValue('xmoney-secret-key')
+  const secretKey = getStoredValue('xmoney-secret-key', 'session')
   const isLive = getEnvironmentFromSecretKey(secretKey) === 'live'
   return {
     siteId: getStoredValue('xmoney-site-id'),
