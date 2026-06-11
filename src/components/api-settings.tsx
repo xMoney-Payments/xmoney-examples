@@ -32,9 +32,17 @@ export function ApiSettings() {
     'xmoney-public-key',
     DEFAULT_PUBLIC_KEY
   )
+  // Only prefill the default secret key while the public key is still the
+  // default one. Otherwise a returning user (public key persisted in
+  // localStorage, secret key cleared from sessionStorage) would get a default
+  // secret key that doesn't match their own public key.
+  const defaultSecretKey =
+    !!DEFAULT_PUBLIC_KEY && storedPublicKey === DEFAULT_PUBLIC_KEY
+      ? DEFAULT_SECRET_KEY
+      : ''
   const [storedSecretKey, setStoredSecretKey] = useSessionStorage(
     'xmoney-secret-key',
-    DEFAULT_SECRET_KEY
+    defaultSecretKey
   )
 
   const [siteId, setSiteId] = useState(storedSiteId)
