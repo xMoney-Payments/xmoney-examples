@@ -72,15 +72,28 @@ export function maskSecretKey(secretKey: string): string {
 }
 
 export function getApiCredentials(): ApiCredentials {
+  const publicKey = getStoredValue(
+    'xmoney-public-key',
+    'local',
+    DEFAULT_PUBLIC_KEY
+  )
+
+  // Only fall back to the default secret key when the public key is the default
+  // one. The secret key lives in sessionStorage (cleared on tab close) while the
+  // public key persists in localStorage, so a returning user with their own
+  // public key must provide a matching secret key rather than inheriting ours.
+  const isDefaultPublicKey =
+    !!DEFAULT_PUBLIC_KEY && publicKey === DEFAULT_PUBLIC_KEY
   const secretKey = getStoredValue(
     'xmoney-secret-key',
     'session',
-    DEFAULT_SECRET_KEY
+    isDefaultPublicKey ? DEFAULT_SECRET_KEY : ''
   )
+
   const isLive = getEnvironmentFromSecretKey(secretKey) === 'live'
   return {
     siteId: getStoredValue('xmoney-site-id', 'local', DEFAULT_SITE_ID),
-    publicKey: getStoredValue('xmoney-public-key', 'local', DEFAULT_PUBLIC_KEY),
+    publicKey: publicKey,
     secretKey: secretKey,
     apiKey: extractTokenFromSecretKey(secretKey),
     isLive: isLive,
