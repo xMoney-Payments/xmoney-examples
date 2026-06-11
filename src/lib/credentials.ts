@@ -4,6 +4,12 @@
  * in sessionStorage so it is cleared when the browser session ends.
  */
 
+import {
+  DEFAULT_PUBLIC_KEY,
+  DEFAULT_SECRET_KEY,
+  DEFAULT_SITE_ID,
+} from './defaults'
+
 const TEST_ENV = 'test'
 const LIVE_ENV = 'live'
 const SECRET_KEY_REGEXP = new RegExp(`^sk_(${TEST_ENV}|${LIVE_ENV})_(.+)$`)
@@ -33,18 +39,19 @@ export function getEnvironmentFromSecretKey(
 
 function getStoredValue(
   key: string,
-  storage: 'local' | 'session' = 'local'
+  storage: 'local' | 'session' = 'local',
+  fallback = ''
 ): string {
-  if (typeof window === 'undefined') return ''
+  if (typeof window === 'undefined') return fallback
 
   const store = storage === 'session' ? sessionStorage : localStorage
   const item = store.getItem(key)
-  if (!item) return ''
+  if (!item) return fallback
 
   try {
-    return JSON.parse(item)
+    return JSON.parse(item) || fallback
   } catch {
-    return item
+    return item || fallback
   }
 }
 
@@ -65,11 +72,15 @@ export function maskSecretKey(secretKey: string): string {
 }
 
 export function getApiCredentials(): ApiCredentials {
-  const secretKey = getStoredValue('xmoney-secret-key', 'session')
+  const secretKey = getStoredValue(
+    'xmoney-secret-key',
+    'session',
+    DEFAULT_SECRET_KEY
+  )
   const isLive = getEnvironmentFromSecretKey(secretKey) === 'live'
   return {
-    siteId: getStoredValue('xmoney-site-id'),
-    publicKey: getStoredValue('xmoney-public-key'),
+    siteId: getStoredValue('xmoney-site-id', 'local', DEFAULT_SITE_ID),
+    publicKey: getStoredValue('xmoney-public-key', 'local', DEFAULT_PUBLIC_KEY),
     secretKey: secretKey,
     apiKey: extractTokenFromSecretKey(secretKey),
     isLive: isLive,

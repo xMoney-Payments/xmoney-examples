@@ -17,16 +17,24 @@ import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useSessionStorage } from '@/hooks/use-session-storage'
 import { cn } from '@/lib/utils'
 import { maskSecretKey } from '@/lib/credentials'
+import {
+  DEFAULT_PUBLIC_KEY,
+  DEFAULT_SECRET_KEY,
+  DEFAULT_SITE_ID,
+} from '@/lib/defaults'
 
 export function ApiSettings() {
-  const [storedSiteId, setStoredSiteId] = useLocalStorage('xmoney-site-id', '')
+  const [storedSiteId, setStoredSiteId] = useLocalStorage(
+    'xmoney-site-id',
+    DEFAULT_SITE_ID
+  )
   const [storedPublicKey, setStoredPublicKey] = useLocalStorage(
     'xmoney-public-key',
-    ''
+    DEFAULT_PUBLIC_KEY
   )
   const [storedSecretKey, setStoredSecretKey] = useSessionStorage(
     'xmoney-secret-key',
-    ''
+    DEFAULT_SECRET_KEY
   )
 
   const [siteId, setSiteId] = useState(storedSiteId)
