@@ -13,17 +13,20 @@
     <link rel="manifest" href="/manifest.json" />
     <title>xMoney - Payment Examples</title>
     <script>
-      (function () {
-        var version = 'v2';
+      ;(function () {
+        var version = 'v2'
         try {
-          var stored = window.localStorage.getItem('xmoney-sdk-version');
-          if (stored) version = JSON.parse(stored);
+          var stored = window.localStorage.getItem('xmoney-sdk-version')
+          if (stored) version = JSON.parse(stored)
         } catch (e) {}
         document.write(
-          '<scr' + 'ipt src="https://secure.xmoney.com/sdk/' +
-          version + '/xmoney.js"><\/scr' + 'ipt>'
-        );
-      })();
+          '<scr' +
+            'ipt src="https://secure-stage.xmoney.com/sdk/' +
+            version +
+            '/xmoney.js"><\/scr' +
+            'ipt>'
+        )
+      })()
     </script>
   </head>
   <body>
