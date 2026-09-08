@@ -12,8 +12,10 @@ export type AppearanceVariableGroup =
   | 'shape'
   | 'saveCard'
 
+export type AppearanceVariableId = Extract<keyof AppearanceVariables, string>
+
 export interface AppearanceVariableField {
-  id: keyof AppearanceVariables
+  id: AppearanceVariableId
   label: string
   group: AppearanceVariableGroup
   inputType: 'color' | 'text'
@@ -138,6 +140,10 @@ export const APPEARANCE_VARIABLE_FIELDS: AppearanceVariableField[] = [
     defaultValue: '18px',
   },
   {
+    id: 'buttonBorderRadius',
+    label: 'Button Border Radius',
+    group: 'shape',
+    inputType: 'text',
     defaultValue: '18px',
   },
   {
@@ -211,7 +217,7 @@ export type AppearanceVariableOverride = {
 }
 
 export type AppearanceVariableOverrides = Record<
-  keyof AppearanceVariables,
+  AppearanceVariableId,
   AppearanceVariableOverride
 >
 
