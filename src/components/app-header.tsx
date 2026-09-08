@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { ApiSettings } from './api-settings'
+import { SdkVersionSelector } from './sdk-version-selector'
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -385,6 +386,7 @@ export function AppHeader() {
           </NavigationMenu>
         </div>
         <div className='ml-auto flex min-w-0 shrink items-center gap-2 md:gap-4'>
+          <SdkVersionSelector />
           <ApiSettings />
         </div>
       </div>

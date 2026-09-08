@@ -12,7 +12,22 @@
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>xMoney - Payment Examples</title>
-    <script src="https://secure.xmoney.com/sdk/v2/xmoney.js"></script>
+    <script>
+      ;(function () {
+        var version = 'v2'
+        try {
+          var stored = window.localStorage.getItem('xmoney-sdk-version')
+          if (stored) version = JSON.parse(stored)
+        } catch (e) {}
+        document.write(
+          '<scr' +
+            'ipt src="https://secure.xmoney.com/sdk/' +
+            version +
+            '/xmoney.js"><\/scr' +
+            'ipt>'
+        )
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

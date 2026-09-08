@@ -271,8 +271,8 @@ function Dashboard() {
             </p>
             <p>
               <span className='font-medium text-slate-900'>SDK not loaded.</span>{' '}
-              Confirm secure.xmoney.com is reachable and the SDK script loads
-              in the page.
+              Confirm the version selector in the header can reach
+              secure.xmoney.com. Refresh the page after changing the SDK version.
             </p>
             <p>
               <span className='font-medium text-slate-900'>Wallets unavailable.</span>{' '}
