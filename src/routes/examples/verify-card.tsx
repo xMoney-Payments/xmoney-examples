@@ -14,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { TwoColumnLayout, type CodeTab } from '@/components/two-column-layout'
+import { createSdkLogEvent, type SdkLogEvent } from '@/lib/sdk-events'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
@@ -43,8 +44,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import type {
-  XMoneyPaymentFormConfig,
-  XMoneyPaymentFormInstance,
+  PaymentFormConfig,
+  PaymentFormInstance,
 } from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 export const Route = createFileRoute('/examples/verify-card')({
@@ -73,6 +74,11 @@ function VerifyCardPage() {
     payload: string
     checksum: string
   } | null>(null)
+  const [sessionId, setSessionId] = useState(0)
+  const [events, setEvents] = useState<SdkLogEvent[]>([])
+  const logEvent = (name: SdkLogEvent['name'], payload?: unknown) => {
+    setEvents((prev) => [...prev, createSdkLogEvent(name, payload)])
+  }
   const [customerData, setCustomerData] = useState({
     identifier: 'customer-12333',
     firstName: 'John',
@@ -164,7 +170,7 @@ function VerifyCardPage() {
 
   useEffect(() => {
     let mounted = true
-    let sdkInstance: XMoneyPaymentFormInstance | null = null
+    let sdkInstance: PaymentFormInstance | null = null
 
     const initVerifyCard = async () => {
       if (!showAddCard) {
@@ -204,28 +210,30 @@ function VerifyCardPage() {
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: XMoneyPaymentFormConfig = {
+          const sdkConfig: PaymentFormConfig = {
             container: 'verify-card-form',
             publicKey: publicKey,
             orderPayload: data.payload,
             orderChecksum: data.checksum,
             card: {
               validationMode: 'onBlur',
+              inputs: { grouping: 'spaced' },
             },
             options: {
               locale: 'en-US',
             },
             onReady: () => {
               if (mounted) setLoading(false)
-              console.log('Verify card form ready')
+              logEvent('onReady')
             },
             onError: (err: any) => {
-              console.error('Verify card error', err)
+              logEvent('onError', err)
               if (mounted) {
                 setLoading(false)
               }
             },
             onPaymentComplete: async () => {
+              logEvent('onPaymentComplete')
               if (mounted) {
                 setLoading(false)
                 setShowAddCard(false)
@@ -308,7 +316,7 @@ function VerifyCardPage() {
         }
       }
     }
-  }, [showAddCard])
+  }, [showAddCard, sessionId])
 
   // Reset loading when modal closes
   useEffect(() => {
@@ -365,8 +373,7 @@ function VerifyCardPage() {
   }
 
   const handleRefresh = () => {
-    setLoading(true)
-    window.location.reload()
+    setSessionId((n) => n + 1)
   }
 
   const codeTabs: CodeTab[] = [
@@ -383,6 +390,7 @@ function VerifyCardPage() {
     const str = formatConfigToJS(
       {
         validationMode: 'onBlur',
+        inputs: { grouping: 'spaced' },
       },
       2
     )
@@ -486,6 +494,8 @@ const checksum = getBase64Checksum(orderData, apiKey)
       codeTabs={codeTabs}
       onRefresh={handleRefresh}
       loading={loading && showAddCard}
+      events={events}
+      onClearEvents={() => setEvents([])}
     >
       <div className='bg-white min-h-full'>
         <div className='max-w-6xl mx-auto p-4 sm:p-6 lg:p-8'>
@@ -719,7 +729,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
                     Add Card
                   </Button>
                   <DialogContent className='sm:max-w-[480px] overflow-y-auto max-h-[90vh] p-0'>
-                    <DialogHeader className='px-6 pt-6 pb-4'>
+                    <DialogHeader className='px-4 pt-4 pb-4 sm:px-6 sm:pt-6'>
                       <DialogTitle className='text-xl font-semibold text-slate-900'>
                         Add Card
                       </DialogTitle>
@@ -860,7 +870,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
                     ))}
                   </div>
                 ) : (
-                  <div className='bg-slate-50 rounded-lg border border-slate-200 p-12 text-center'>
+                  <div className='bg-slate-50 rounded-lg border border-slate-200 p-6 text-center sm:p-8 md:p-12'>
                     <CreditCard className='w-12 h-12 text-slate-400 mx-auto mb-4' />
                     <h3 className='text-lg font-medium text-slate-900 mb-2'>
                       No cards

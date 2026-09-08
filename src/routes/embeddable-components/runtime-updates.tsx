@@ -23,17 +23,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { PreviewState } from '@/components/preview-state'
 import {
   ThreeColumnLayout,
   type CodeTab,
 } from '@/components/three-column-layout'
-import type { XMoneyPaymentCardConfig } from '@/types/xmoney-sdk/payment-card-sdk.types'
-import type { XMoneyGooglePayConfig } from '@/types/xmoney-sdk/google-pay-sdk.types'
-import type { XMoneyApplePayConfig } from '@/types/xmoney-sdk/apple-pay-sdk.types'
-import type { XMoneySavedCardPaymentInstance } from '@/types/xmoney-sdk/saved-card-payment-sdk.types'
-import type { XMoneyBaseInstance } from '@/types/xmoney-sdk/sdk-base.types'
+import type { PaymentCardConfig } from '@/types/xmoney-sdk/payment-card-sdk.types'
+import type { GooglePayConfig } from '@/types/xmoney-sdk/google-pay-sdk.types'
+import type { ApplePayConfig } from '@/types/xmoney-sdk/apple-pay-sdk.types'
+import type { SavedCardPaymentInstance } from '@/types/xmoney-sdk/saved-card-payment-sdk.types'
+import type { BaseInstance, Locale } from '@/types/xmoney-sdk/sdk-base.types'
 import type { PaymentMethodCapabilities } from '@/types/xmoney-sdk/payment-method-capabilities.types'
 import type { Card as SavedCard } from '@/types/checkout.types'
+import { CardBrandBadge } from '@/components/card-brand-badge'
+import { createSdkLogEvent, type SdkLogEvent } from '@/lib/sdk-events'
 
 export const Route = createFileRoute('/embeddable-components/runtime-updates')({
   component: RuntimeUpdatesPage,
@@ -47,41 +50,22 @@ type EmbeddableType =
 
 const CUSTOMER_IDENTIFIER = 'customer-12333'
 
-function CardBrandBadge({ type }: { type: string }) {
-  const brand = type.toLowerCase()
-  if (brand === 'visa') {
-    return (
-      <span className='rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[10px] font-extrabold tracking-tight text-blue-700'>
-        VISA
-      </span>
-    )
-  }
-  if (brand === 'mastercard') {
-    return (
-      <span className='flex items-center'>
-        <span className='-mr-2.5 inline-block h-4 w-4 rounded-full bg-red-500 opacity-90' />
-        <span className='inline-block h-4 w-4 rounded-full bg-yellow-400 opacity-90' />
-      </span>
-    )
-  }
-  return (
-    <span className='rounded bg-slate-100 px-1 py-0.5 text-[10px] font-bold text-slate-500'>
-      {type.toUpperCase()}
-    </span>
-  )
-}
-
 function RuntimeUpdatesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<SdkLogEvent[]>([])
+  const logEvent = (name: SdkLogEvent['name'], payload?: unknown) => {
+    setEvents((prev) => [...prev, createSdkLogEvent(name, payload)])
+  }
   const [paymentResult, setPaymentResult] = useState<{
     status: 'success' | 'error'
     message?: string
     data?: any
   } | null>(null)
-  const sdkInstanceRef = useRef<XMoneyBaseInstance | null>(null)
-  const savedCardPaymentInstanceRef =
-    useRef<XMoneySavedCardPaymentInstance | null>(null)
+  const sdkInstanceRef = useRef<BaseInstance | null>(null)
+  const savedCardPaymentInstanceRef = useRef<SavedCardPaymentInstance | null>(
+    null
+  )
 
   const [embeddableType, setEmbeddableType] =
     useState<EmbeddableType>('paymentCard')
@@ -89,7 +73,7 @@ function RuntimeUpdatesPage() {
   const [amount, setAmount] = useState(100)
   const [currency, setCurrency] = useState('EUR')
 
-  const [locale, setLocale] = useState<'en-US' | 'el-GR' | 'ro-RO'>('en-US')
+  const [locale, setLocale] = useState<Locale>('en-US')
 
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'custom'>(
     'light'
@@ -98,9 +82,7 @@ function RuntimeUpdatesPage() {
 
   const [appliedAmount, setAppliedAmount] = useState(100)
   const [appliedCurrency, setAppliedCurrency] = useState('EUR')
-  const [appliedLocale, setAppliedLocale] = useState<
-    'en-US' | 'el-GR' | 'ro-RO'
-  >('en-US')
+  const [appliedLocale, setAppliedLocale] = useState<Locale>('en-US')
   const [appliedThemeMode, setAppliedThemeMode] = useState<
     'light' | 'dark' | 'custom'
   >('light')
@@ -111,6 +93,14 @@ function RuntimeUpdatesPage() {
     payload: string
     checksum: string
   } | null>(null)
+
+  const [sessionId, setSessionId] = useState(0)
+
+  const restartPayment = () => {
+    setPaymentResult(null)
+    setError(null)
+    setSessionId((n) => n + 1)
+  }
 
   const [capabilities, setCapabilities] =
     useState<PaymentMethodCapabilities | null>(null)
@@ -263,6 +253,7 @@ function RuntimeUpdatesPage() {
               orderChecksum: data.checksum,
               onReady: () => {
                 if (mounted) setLoading(false)
+                logEvent('onReady')
               },
               onError: (err: any) => {
                 console.error('Payment error', err)
@@ -306,10 +297,10 @@ function RuntimeUpdatesPage() {
           orderChecksum: data.checksum,
           onReady: () => {
             if (mounted) setLoading(false)
-            console.log(`${embeddableLabel} ready`)
+            logEvent('onReady')
           },
           onError: (err: any) => {
-            console.error('Payment error', err)
+            logEvent('onError', err)
             if (mounted) {
               setLoading(false)
               setPaymentResult({
@@ -319,6 +310,7 @@ function RuntimeUpdatesPage() {
             }
           },
           onPaymentComplete: (result: any) => {
+            logEvent('onPaymentComplete', result)
             if (mounted) {
               setPaymentResult({ status: 'success', data: result })
             }
@@ -326,7 +318,7 @@ function RuntimeUpdatesPage() {
         }
 
         if (embeddableType === 'paymentCard') {
-          const sdkConfig: XMoneyPaymentCardConfig = {
+          const sdkConfig: PaymentCardConfig = {
             ...baseConfig,
             card: {
               validationMode: 'onBlur',
@@ -337,6 +329,7 @@ function RuntimeUpdatesPage() {
                 enabled: false,
                 optInVisible: false,
               },
+              inputs: { grouping: 'spaced' },
             },
             options: {
               locale,
@@ -348,7 +341,7 @@ function RuntimeUpdatesPage() {
         }
 
         if (embeddableType === 'googlePay') {
-          const sdkConfig: XMoneyGooglePayConfig = {
+          const sdkConfig: GooglePayConfig = {
             ...baseConfig,
             options: {
               locale,
@@ -364,7 +357,7 @@ function RuntimeUpdatesPage() {
           return
         }
 
-        const sdkConfig: XMoneyApplePayConfig = {
+        const sdkConfig: ApplePayConfig = {
           ...baseConfig,
           options: {
             locale,
@@ -405,7 +398,7 @@ function RuntimeUpdatesPage() {
         savedCardPaymentInstanceRef.current = null
       }
     }
-  }, [embeddableLabel, embeddableType, isWalletEmbeddable])
+  }, [embeddableLabel, embeddableType, isWalletEmbeddable, sessionId])
 
   const handleUpdateOrder = async () => {
     const instance =
@@ -475,6 +468,9 @@ const checkout = await window.XMoney.paymentCard({
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   orderPayload: '${initData?.payload ? initData.payload.substring(0, 30) + '...' : '<YOUR_ORDER_PAYLOAD>'}',
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
+  card: {
+    inputs: { grouping: 'spaced' }
+  },
   options: {
     locale: '${appliedLocale}',
     appearance: {
@@ -592,7 +588,9 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
       loading={loading}
       error={error}
       themeMode={appliedThemeMode === 'dark' ? 'dark' : 'light'}
-      onRefresh={() => window.location.reload()}
+      onRefresh={restartPayment}
+      events={events}
+      onClearEvents={() => setEvents([])}
       codeTabs={codeTabs}
       sidebarContent={
         <div className='flex flex-col h-full'>
@@ -605,7 +603,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             </p>
           </div>
 
-          <div className='flex-1 overflow-y-auto p-5 space-y-6'>
+          <div className='flex-1 overflow-y-auto space-y-4 p-4 sm:space-y-6 sm:p-5 md:p-6'>
             <div className='space-y-3'>
               <div className='flex items-center gap-2'>
                 <Layers className='w-4 h-4 text-slate-600' />
@@ -741,7 +739,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                       <Select
                         value={locale}
                         onValueChange={(value) =>
-                          setLocale(value as 'en-US' | 'el-GR' | 'ro-RO')
+                          setLocale(value as Locale)
                         }
                       >
                         <SelectTrigger id='locale' className='h-9 text-sm'>
@@ -751,6 +749,9 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                           <SelectItem value='en-US'>English (US)</SelectItem>
                           <SelectItem value='el-GR'>Greek</SelectItem>
                           <SelectItem value='ro-RO'>Romanian</SelectItem>
+                          <SelectItem value='bg-BG'>Bulgarian</SelectItem>
+                          <SelectItem value='hu-HU'>Hungarian</SelectItem>
+                          <SelectItem value='pl-PL'>Polish</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -836,7 +837,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
       }
     >
       {paymentResult?.status === 'success' ? (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <Check className='w-8 h-8 text-green-600' />
           </div>
@@ -855,21 +856,14 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             </pre>
           </div>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              setLoading(true)
-              setTimeout(() => {
-                setLoading(false)
-                window.location.reload()
-              }, 100)
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full shadow-md'
           >
             Start New Payment
           </button>
-        </div>
+        </PreviewState>
       ) : paymentResult?.status === 'error' ? (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <div className='text-red-600 font-bold text-2xl'>!</div>
           </div>
@@ -880,18 +874,15 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             {paymentResult.message}
           </p>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              window.location.reload()
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white w-full shadow-md'
           >
             Try Again
           </button>
-        </div>
+        </PreviewState>
       ) : isWalletEmbeddable && !isEmbeddableSupported ? (
         <div className='flex items-center justify-center m-auto min-h-96 w-full p-4'>
-          <div className='w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-5 space-y-3 text-center'>
+          <div className='w-full max-w-[420px] rounded-lg border border-slate-200 bg-white p-4 space-y-3 text-center sm:rounded-xl sm:p-5'>
             <div className='mx-auto w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center'>
               <AlertCircle className='w-5 h-5 text-slate-500' />
             </div>
@@ -927,7 +918,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
         </div>
       ) : embeddableType === 'savedCardPayment' ? (
         <div className='flex items-center justify-center m-auto w-full p-4'>
-          <div className='w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-6 space-y-5'>
+          <div className='w-full max-w-[420px] rounded-lg border border-slate-200 bg-white p-4 space-y-4 sm:rounded-xl sm:p-5 sm:space-y-5 md:p-6'>
             <div className='space-y-1'>
               <h3 className='text-sm font-semibold text-slate-900'>
                 Saved Card Payment

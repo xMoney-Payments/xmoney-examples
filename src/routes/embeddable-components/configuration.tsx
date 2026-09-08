@@ -25,54 +25,49 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PreviewState } from '@/components/preview-state'
 import {
   ThreeColumnLayout,
   type CodeTab,
 } from '@/components/three-column-layout'
-import type { XMoneyPaymentCardConfig } from '@/types/xmoney-sdk/payment-card-sdk.types'
-import type { XMoneyGooglePayConfig } from '@/types/xmoney-sdk/google-pay-sdk.types'
-import type { XMoneyApplePayConfig } from '@/types/xmoney-sdk/apple-pay-sdk.types'
-import type { XMoneySavedCardPaymentInstance } from '@/types/xmoney-sdk/saved-card-payment-sdk.types'
+import type {
+  PaymentCardConfig,
+  PaymentCardInstance,
+} from '@/types/xmoney-sdk/payment-card-sdk.types'
+import type { GooglePayConfig } from '@/types/xmoney-sdk/google-pay-sdk.types'
+import type { ApplePayConfig } from '@/types/xmoney-sdk/apple-pay-sdk.types'
+import type { SavedCardPaymentInstance } from '@/types/xmoney-sdk/saved-card-payment-sdk.types'
 import type {
   ApplePayButtonStyle,
   ApplePayButtonType,
+  CardInputGrouping,
   FormButtonType,
   GooglePayButtonBorderType,
   GooglePayButtonColor,
   GooglePayButtonType,
   Locale,
+  PaymentChangeEvent,
+  ValidationEvent,
   ValidationMode,
-  XMoneyBaseInstance,
+  BaseInstance,
 } from '@/types/xmoney-sdk/sdk-base.types'
 import type { PaymentMethodCapabilities } from '@/types/xmoney-sdk/payment-method-capabilities.types'
 import type { Card as SavedCard } from '@/types/checkout.types'
 import { formatConfigToJS } from '@/lib/format-utils'
+import {
+  buildAppearanceRules,
+  buildAppearanceVariables,
+  DEFAULT_APPEARANCE_VARIABLES,
+  disableAllAppearanceVariables,
+  enableAllAppearanceVariables,
+  type AppearanceRuleEntry,
+} from '@/lib/appearance-config'
+import { AppearanceRulesEditor } from '@/components/appearance-rules-editor'
+import { AppearanceVariablesEditor } from '@/components/appearance-variables-editor'
+import { CardBrandBadge } from '@/components/card-brand-badge'
+import { createSdkLogEvent, type SdkLogEvent } from '@/lib/sdk-events'
 
 const CUSTOMER_IDENTIFIER = 'customer-12333'
-
-function CardBrandBadge({ type }: { type: string }) {
-  const brand = type.toLowerCase()
-  if (brand === 'visa') {
-    return (
-      <span className='rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[10px] font-extrabold tracking-tight text-blue-700'>
-        VISA
-      </span>
-    )
-  }
-  if (brand === 'mastercard') {
-    return (
-      <span className='flex items-center'>
-        <span className='-mr-2.5 inline-block h-4 w-4 rounded-full bg-red-500 opacity-90' />
-        <span className='inline-block h-4 w-4 rounded-full bg-yellow-400 opacity-90' />
-      </span>
-    )
-  }
-  return (
-    <span className='rounded bg-slate-100 px-1 py-0.5 text-[10px] font-bold text-slate-500'>
-      {type.toUpperCase()}
-    </span>
-  )
-}
 
 export const Route = createFileRoute('/embeddable-components/configuration')({
   component: EmbeddableConfigurationPage,
@@ -92,9 +87,20 @@ function EmbeddableConfigurationPage() {
     message?: string
     data?: any
   } | null>(null)
-  const sdkInstanceRef = useRef<XMoneyBaseInstance | null>(null)
-  const savedCardPaymentInstanceRef =
-    useRef<XMoneySavedCardPaymentInstance | null>(null)
+  const sdkInstanceRef = useRef<BaseInstance | null>(null)
+  const savedCardPaymentInstanceRef = useRef<SavedCardPaymentInstance | null>(
+    null
+  )
+  const [events, setEvents] = useState<SdkLogEvent[]>([])
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [validationState, setValidationState] =
+    useState<ValidationEvent | null>(null)
+  const [paymentChange, setPaymentChange] = useState<PaymentChangeEvent | null>(
+    null
+  )
+  const logEvent = (name: SdkLogEvent['name'], payload?: unknown) => {
+    setEvents((prev) => [...prev, createSdkLogEvent(name, payload)])
+  }
 
   const [embeddableType, setEmbeddableType] =
     useState<EmbeddableType>('paymentCard')
@@ -107,21 +113,16 @@ function EmbeddableConfigurationPage() {
     'light'
   )
 
-  const [themeOverrides, setThemeOverrides] = useState({
-    colorPrimary: { enabled: false, color: '#009688' },
-    colorDanger: { enabled: false, color: '#e53935' },
-    colorBackground: { enabled: false, color: '#f5f5f5' },
-    colorText: { enabled: false, color: '#212121' },
-    colorTextSecondary: { enabled: false, color: '#757575' },
-    colorBorder: { enabled: false, color: '#e0e0e0' },
-    colorBorderFocus: { enabled: false, color: '#009688' },
-    colorTextPlaceholder: { enabled: false, color: '#bdbdbd' },
-    colorBackgroundFocus: { enabled: false, color: '#ffffff' },
-    borderRadius: { enabled: false, value: '4px' },
-  })
+  const [themeOverrides, setThemeOverrides] = useState(
+    DEFAULT_APPEARANCE_VARIABLES
+  )
+  const [appearanceRuleEntries, setAppearanceRuleEntries] = useState<
+    AppearanceRuleEntry[]
+  >([])
 
   const [cardConfig, setCardConfig] = useState({
     validationMode: 'onBlur' as ValidationMode,
+    inputGrouping: 'spaced' as CardInputGrouping,
     submitButtonVisible: true,
     submitButtonType: 'pay' as FormButtonType,
     savedCardsEnabled: false,
@@ -152,6 +153,14 @@ function EmbeddableConfigurationPage() {
     payload: string
     checksum: string
   } | null>(null)
+
+  const [sessionId, setSessionId] = useState(0)
+
+  const restartPayment = () => {
+    setPaymentResult(null)
+    setError(null)
+    setSessionId((n) => n + 1)
+  }
 
   const [capabilities, setCapabilities] =
     useState<PaymentMethodCapabilities | null>(null)
@@ -213,29 +222,14 @@ function EmbeddableConfigurationPage() {
 
   const createAppearance = () => {
     if (themeMode === 'custom') {
-      const vars: any = {}
-      if (themeOverrides.colorPrimary.enabled)
-        vars.colorPrimary = themeOverrides.colorPrimary.color
-      if (themeOverrides.colorDanger.enabled)
-        vars.colorDanger = themeOverrides.colorDanger.color
-      if (themeOverrides.colorBackground.enabled)
-        vars.colorBackground = themeOverrides.colorBackground.color
-      if (themeOverrides.colorText.enabled)
-        vars.colorText = themeOverrides.colorText.color
-      if (themeOverrides.colorTextSecondary.enabled)
-        vars.colorTextSecondary = themeOverrides.colorTextSecondary.color
-      if (themeOverrides.colorBorder.enabled)
-        vars.colorBorder = themeOverrides.colorBorder.color
-      if (themeOverrides.colorBorderFocus.enabled)
-        vars.colorBorderFocus = themeOverrides.colorBorderFocus.color
-      if (themeOverrides.colorTextPlaceholder.enabled)
-        vars.colorTextPlaceholder = themeOverrides.colorTextPlaceholder.color
-      if (themeOverrides.colorBackgroundFocus.enabled)
-        vars.colorBackgroundFocus = themeOverrides.colorBackgroundFocus.color
-      if (themeOverrides.borderRadius.enabled)
-        vars.borderRadius = themeOverrides.borderRadius.value
+      const variables = buildAppearanceVariables(themeOverrides)
+      const rules = buildAppearanceRules(appearanceRuleEntries)
 
-      return { theme: 'custom', variables: vars }
+      return {
+        theme: 'custom' as const,
+        variables,
+        ...(rules ? { rules } : {}),
+      }
     }
     return { theme: themeMode }
   }
@@ -278,6 +272,9 @@ function EmbeddableConfigurationPage() {
       setPaymentResult(null)
       setIsEmbeddableSupported(true)
       setUnsupportedReason(null)
+      setIsProcessing(false)
+      setValidationState(null)
+      setPaymentChange(null)
       setSavedCards([])
       setSelectedSavedCardId(null)
       setIsSavedCardsLoading(false)
@@ -345,9 +342,10 @@ function EmbeddableConfigurationPage() {
               orderChecksum: data.checksum,
               onReady: () => {
                 if (mounted) setLoading(false)
+                logEvent('onReady')
               },
               onError: (err: any) => {
-                console.error('Payment error', err)
+                logEvent('onError', err)
                 if (mounted) {
                   setPaymentResult({
                     status: 'error',
@@ -356,14 +354,20 @@ function EmbeddableConfigurationPage() {
                 }
               },
               onPaymentComplete: (result: any) => {
-                console.log('Payment complete', result)
-                setPaymentResult({ status: 'success', data: result })
+                logEvent('onPaymentComplete', result)
+                if (mounted) {
+                  setPaymentResult({ status: 'success', data: result })
+                }
               },
               onPaymentProcessing: (isProcessing: boolean) => {
-                if (mounted && isProcessing) {
-                  setPaymentResult({
-                    status: 'processing',
-                  })
+                logEvent('onPaymentProcessing', { isProcessing })
+                if (mounted) {
+                  if (isProcessing) {
+                    setPaymentResult({
+                      status: 'processing',
+                    })
+                  }
+                  setIsProcessing(isProcessing)
                 }
               },
             })
@@ -383,10 +387,10 @@ function EmbeddableConfigurationPage() {
           orderChecksum: data.checksum,
           onReady: () => {
             if (mounted) setLoading(false)
-            console.log(`${embeddableLabel} ready`)
+            logEvent('onReady')
           },
           onError: (err: any) => {
-            console.error('Payment error', err)
+            logEvent('onError', err)
             if (mounted) {
               setLoading(false)
               setPaymentResult({
@@ -396,6 +400,7 @@ function EmbeddableConfigurationPage() {
             }
           },
           onPaymentComplete: (result: any) => {
+            logEvent('onPaymentComplete', result)
             if (mounted) {
               setPaymentResult({ status: 'success', data: result })
             }
@@ -403,7 +408,7 @@ function EmbeddableConfigurationPage() {
         }
 
         if (embeddableType === 'paymentCard') {
-          const sdkConfig: XMoneyPaymentCardConfig = {
+          const sdkConfig: PaymentCardConfig = {
             ...baseConfig,
             card: {
               validationMode: cardConfig.validationMode,
@@ -415,10 +420,25 @@ function EmbeddableConfigurationPage() {
                 visible: cardConfig.submitButtonVisible,
                 type: cardConfig.submitButtonType,
               },
+              inputs: {
+                grouping: cardConfig.inputGrouping,
+              },
             },
             options: {
               locale,
               appearance: createAppearance() as any,
+            },
+            onPaymentProcessing: (processing) => {
+              logEvent('onPaymentProcessing', { isProcessing: processing })
+              if (mounted) setIsProcessing(processing)
+            },
+            onValidation: (event) => {
+              logEvent('onValidation', event)
+              if (mounted) setValidationState(event)
+            },
+            onPaymentChange: (event) => {
+              logEvent('onPaymentChange', event)
+              if (mounted) setPaymentChange(event)
             },
           }
           sdkInstanceRef.current = await window.XMoney.paymentCard(sdkConfig)
@@ -426,7 +446,7 @@ function EmbeddableConfigurationPage() {
         }
 
         if (embeddableType === 'googlePay') {
-          const sdkConfig: XMoneyGooglePayConfig = {
+          const sdkConfig: GooglePayConfig = {
             ...baseConfig,
             options: {
               locale,
@@ -442,7 +462,7 @@ function EmbeddableConfigurationPage() {
           return
         }
 
-        const sdkConfig: XMoneyApplePayConfig = {
+        const sdkConfig: ApplePayConfig = {
           ...baseConfig,
           options: {
             locale,
@@ -491,9 +511,8 @@ function EmbeddableConfigurationPage() {
     amount,
     currency,
     locale,
-    themeMode,
-    themeOverrides,
     cardConfig.validationMode,
+    cardConfig.inputGrouping,
     cardConfig.submitButtonVisible,
     cardConfig.submitButtonType,
     cardConfig.savedCardsEnabled,
@@ -506,7 +525,20 @@ function EmbeddableConfigurationPage() {
     applePayConfig.type,
     applePayConfig.radius,
     capabilities,
+    sessionId,
   ])
+
+  useEffect(() => {
+    if (embeddableType !== 'paymentCard' || !sdkInstanceRef.current) return
+
+    const timer = setTimeout(() => {
+      ;(sdkInstanceRef.current as PaymentCardInstance)?.updateAppearance(
+        createAppearance()
+      )
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [embeddableType, themeMode, themeOverrides, appearanceRuleEntries])
 
   const codeTabs: CodeTab[] = [
     {
@@ -530,35 +562,48 @@ const checkout = await window.XMoney.paymentCard({
     submitButton: {
       visible: ${cardConfig.submitButtonVisible},
       type: '${cardConfig.submitButtonType}'
+    },
+    inputs: {
+      grouping: '${cardConfig.inputGrouping}'
     }
   },
   options: {
     locale: '${locale}',
-    appearance: {
-      theme: '${themeMode}'${
-        themeMode === 'custom'
-          ? `,
-      variables: ${(() => {
-        const str = formatConfigToJS(
-          Object.keys(themeOverrides).reduce((acc: any, key) => {
-            const override = themeOverrides[key as keyof typeof themeOverrides]
-            if (override.enabled) {
-              acc[key] = 'color' in override ? override.color : override.value
-            }
-            return acc
-          }, {}),
-          2
-        )
-        return str
-          .split('\n')
-          .map((line: string, i: number) => (i === 0 ? line : '      ' + line))
-          .join('\n')
-      })()}`
-          : ''
-      }
-    }
+    appearance: ${(() => {
+      const str = formatConfigToJS(createAppearance(), 2)
+      return str
+        .split('\n')
+        .map((line: string, i: number) => (i === 0 ? line : '      ' + line))
+        .join('\n')
+    })()}
+  },
+  onValidation: (event) => {
+    console.log('Validation', event)
+  },
+  onPaymentChange: (event) => {
+    console.log('Payment change', event)
+  },
+  onPaymentProcessing: (isProcessing) => {
+    console.log('Processing', isProcessing)
+  },
+  onPaymentComplete: (result) => {
+    console.log('Payment complete', result)
+  },
+  onError: (err) => {
+    console.error('Payment error', err)
   }
-})`
+})
+
+${
+  !cardConfig.submitButtonVisible
+    ? `// External CTA when the iframe submit button is hidden
+async function onPayClick() {
+  const result = await checkout.validate()
+  if (result.isValid) checkout.submit()
+}
+`
+    : ''
+}`
           : embeddableType === 'googlePay'
             ? `// Check support before initializing Google Pay
 const capabilities = await window.XMoney.getPaymentMethodCapabilities()
@@ -633,7 +678,7 @@ checkout.pay({ cardId: ${selectedSavedCardId ?? '<CARD_ID>'} })`,
 const orderData = {
   publicKey: '${initData?.publicKey || '<YOUR_PUBLIC_KEY>'}',
   customer: {
-    identifier: 'customer-123',
+    identifier: 'customer-12333',
     firstName: 'John',
     lastName: 'Doe',
     country: 'RO',
@@ -666,7 +711,9 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
       loading={loading}
       error={error}
       themeMode={themeMode === 'dark' ? 'dark' : 'light'}
-      onRefresh={() => window.location.reload()}
+      onRefresh={restartPayment}
+      events={events}
+      onClearEvents={() => setEvents([])}
       codeTabs={codeTabs}
       sidebarContent={
         <Tabs defaultValue='features' className='flex flex-col h-full'>
@@ -734,7 +781,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
           <div className='flex-1 overflow-y-auto'>
             <TabsContent
               value='features'
-              className='m-0 p-5 space-y-6 animate-in slide-in-from-left-4 fade-in duration-300'
+              className='m-0 space-y-4 p-4 animate-in slide-in-from-left-4 fade-in duration-300 sm:space-y-6 sm:p-5 md:p-6'
             >
               <div className='space-y-3'>
                 <div className='flex items-center gap-2'>
@@ -802,6 +849,9 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                           <SelectItem value='en-US'>English (US)</SelectItem>
                           <SelectItem value='el-GR'>Greek</SelectItem>
                           <SelectItem value='ro-RO'>Romanian</SelectItem>
+                          <SelectItem value='bg-BG'>Bulgarian</SelectItem>
+                          <SelectItem value='hu-HU'>Hungarian</SelectItem>
+                          <SelectItem value='pl-PL'>Polish</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -847,6 +897,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                               <SelectItem value='buy'>Buy</SelectItem>
                               <SelectItem value='checkout'>Checkout</SelectItem>
                               <SelectItem value='donate'>Donate</SelectItem>
+                              <SelectItem value='deposit'>Deposit</SelectItem>
                               <SelectItem value='order'>Order</SelectItem>
                               <SelectItem value='subscribe'>
                                 Subscribe
@@ -888,6 +939,32 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                             </SelectContent>
                           </Select>
                         </div>
+                      </div>
+
+                      <div className='space-y-1.5'>
+                        <Label htmlFor='inputGrouping' className='text-xs'>
+                          Input grouping
+                        </Label>
+                        <Select
+                          value={cardConfig.inputGrouping}
+                          onValueChange={(value) =>
+                            setCardConfig((prev) => ({
+                              ...prev,
+                              inputGrouping: value as CardInputGrouping,
+                            }))
+                          }
+                        >
+                          <SelectTrigger
+                            id='inputGrouping'
+                            className='h-9 text-sm'
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='spaced'>Spaced</SelectItem>
+                            <SelectItem value='condensed'>Condensed</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className='flex items-center justify-between'>
@@ -948,6 +1025,30 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                       </div>
                     </div>
                   </div>
+
+                  {(validationState || paymentChange || isProcessing) && (
+                    <div className='space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3'>
+                      {isProcessing && (
+                        <p className='text-xs font-medium text-amber-700'>
+                          Payment is processing…
+                        </p>
+                      )}
+                      {paymentChange && (
+                        <p className='text-xs text-slate-600'>
+                          CTA: {paymentChange.button.label}
+                          {paymentChange.installments.available
+                            ? ` · ${paymentChange.installments.count} installments (${paymentChange.installments.formattedAmount})`
+                            : ''}
+                        </p>
+                      )}
+                      {validationState && (
+                        <p className='text-xs text-slate-600'>
+                          Form {validationState.isValid ? 'is valid' : 'has errors'}{' '}
+                          ({validationState.trigger})
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -975,7 +1076,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
 
             <TabsContent
               value='appearance'
-              className='m-0 p-5 space-y-6 animate-in slide-in-from-right-4 fade-in duration-300'
+              className='m-0 space-y-4 p-4 animate-in slide-in-from-right-4 fade-in duration-300 sm:space-y-6 sm:p-5 md:p-6'
             >
               {embeddableType === 'paymentCard' ? (
                 <Tabs
@@ -986,25 +1087,14 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                       setThemeMode('light')
                     } else if (mode === 'dark') {
                       setThemeMode('dark')
-                      // Reset overrides when switching to preset
-                      const newOverrides: any = { ...themeOverrides }
-                      Object.keys(newOverrides).forEach((k) => {
-                        newOverrides[k] = {
-                          ...newOverrides[k],
-                          enabled: false,
-                        }
-                      })
-                      setThemeOverrides(newOverrides)
+                      setThemeOverrides(
+                        disableAllAppearanceVariables(themeOverrides)
+                      )
                     } else if (mode === 'custom') {
                       setThemeMode('custom')
-                      const newOverrides: any = { ...themeOverrides }
-                      Object.keys(newOverrides).forEach((k) => {
-                        newOverrides[k] = {
-                          ...newOverrides[k],
-                          enabled: true,
-                        }
-                      })
-                      setThemeOverrides(newOverrides)
+                      setThemeOverrides(
+                        enableAllAppearanceVariables(themeOverrides)
+                      )
                     }
                   }}
                   className='w-full space-y-4'
@@ -1037,155 +1127,32 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                     Dark theme applied.
                   </TabsContent>
 
-                  <TabsContent value='custom' className='space-y-5 pt-2'>
-                    <h3 className='text-sm font-bold text-slate-900'>
-                      Variables
-                    </h3>
+                  <TabsContent value='custom' className='min-w-0 space-y-5 pt-2'>
+                    <Tabs defaultValue='variables' className='w-full space-y-4'>
+                      <TabsList className='grid w-full grid-cols-2'>
+                        <TabsTrigger value='variables' className='cursor-pointer'>
+                          Variables
+                        </TabsTrigger>
+                        <TabsTrigger value='rules' className='cursor-pointer'>
+                          Rules
+                        </TabsTrigger>
+                      </TabsList>
 
-                    <div className='grid grid-cols-1 gap-4'>
-                      {[
-                        { id: 'colorPrimary', label: 'Primary Color' },
-                        { id: 'colorDanger', label: 'Danger Color' },
-                        { id: 'colorBackground', label: 'Background Color' },
-                        { id: 'colorText', label: 'Primary Text' },
-                        { id: 'colorTextSecondary', label: 'Secondary Text' },
-                        {
-                          id: 'colorTextPlaceholder',
-                          label: 'Placeholder Text',
-                        },
-                        { id: 'colorBorder', label: 'Border Color' },
-                        { id: 'colorBorderFocus', label: 'Focus Border' },
-                        {
-                          id: 'colorBackgroundFocus',
-                          label: 'Focus Background',
-                        },
-                      ].map((field) => (
-                        <div
-                          key={field.id}
-                          className='flex items-center justify-between group'
-                        >
-                          <div className='flex flex-col'>
-                            <Label className='font-normal text-sm text-slate-700'>
-                              {field.label}
-                            </Label>
-                            <span className='text-[10px] text-slate-400 font-mono'>
-                              {field.id}
-                            </span>
-                          </div>
-
-                          <div className='flex items-center gap-3'>
-                            <div className='flex items-center gap-2'>
-                              <div className='relative w-8 h-8 rounded-full border border-gray-200 overflow-hidden shadow-sm shrink-0 ring-offset-2 ring-1 ring-transparent group-hover:ring-indigo-100 transition-all'>
-                                <input
-                                  type='color'
-                                  value={themeOverrides[
-                                    field.id as Exclude<
-                                      keyof typeof themeOverrides,
-                                      'borderRadius'
-                                    >
-                                  ].color.slice(0, 7)}
-                                  onChange={(e) => {
-                                    setThemeMode('custom')
-                                    setThemeOverrides({
-                                      ...themeOverrides,
-                                      [field.id]: {
-                                        ...themeOverrides[
-                                          field.id as keyof typeof themeOverrides
-                                        ],
-                                        color: e.target.value,
-                                        enabled: true,
-                                      },
-                                    })
-                                  }}
-                                  className='absolute -top-[50%] -left-[50%] w-[200%] h-[200%] cursor-pointer p-0 m-0 opacity-100'
-                                />
-                              </div>
-                              <Input
-                                className='w-20 h-7 text-xs font-mono uppercase p-1'
-                                value={
-                                  themeOverrides[
-                                    field.id as Exclude<
-                                      keyof typeof themeOverrides,
-                                      'borderRadius'
-                                    >
-                                  ].color
-                                }
-                                onChange={(e) => {
-                                  setThemeMode('custom')
-                                  setThemeOverrides({
-                                    ...themeOverrides,
-                                    [field.id]: {
-                                      ...themeOverrides[
-                                        field.id as keyof typeof themeOverrides
-                                      ],
-                                      color: e.target.value,
-                                      enabled: true,
-                                    },
-                                  })
-                                }}
-                              />
-                            </div>
-                            <Switch
-                              checked={
-                                themeOverrides[
-                                  field.id as keyof typeof themeOverrides
-                                ].enabled
-                              }
-                              onCheckedChange={(c) => {
-                                const newOverrides = {
-                                  ...themeOverrides,
-                                  [field.id]: {
-                                    ...themeOverrides[
-                                      field.id as keyof typeof themeOverrides
-                                    ],
-                                    enabled: c,
-                                  },
-                                }
-                                setThemeOverrides(newOverrides)
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className='flex items-center justify-between'>
-                      <Label className='font-normal text-slate-600'>
-                        Border Radius
-                      </Label>
-                      <div className='flex items-center gap-3'>
-                        <div className='flex items-center gap-2'>
-                          <Input
-                            className='w-20 h-7 text-xs'
-                            value={themeOverrides.borderRadius.value}
-                            onChange={(e) => {
-                              setThemeMode('custom')
-                              setThemeOverrides({
-                                ...themeOverrides,
-                                borderRadius: {
-                                  ...themeOverrides.borderRadius,
-                                  value: e.target.value,
-                                  enabled: true,
-                                },
-                              })
-                            }}
-                          />
-                        </div>
-                        <Switch
-                          checked={themeOverrides.borderRadius.enabled}
-                          onCheckedChange={(c) => {
-                            const newOverrides = {
-                              ...themeOverrides,
-                              borderRadius: {
-                                ...themeOverrides.borderRadius,
-                                enabled: c,
-                              },
-                            }
-                            setThemeOverrides(newOverrides)
-                          }}
+                      <TabsContent value='variables' className='pt-2'>
+                        <AppearanceVariablesEditor
+                          overrides={themeOverrides}
+                          onChange={setThemeOverrides}
+                          onCustomMode={() => setThemeMode('custom')}
                         />
-                      </div>
-                    </div>
+                      </TabsContent>
+
+                      <TabsContent value='rules' className='pt-2'>
+                        <AppearanceRulesEditor
+                          rules={appearanceRuleEntries}
+                          onChange={setAppearanceRuleEntries}
+                        />
+                      </TabsContent>
+                    </Tabs>
                   </TabsContent>
                 </Tabs>
               ) : embeddableType === 'googlePay' ? (
@@ -1403,7 +1370,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                   <p className='text-xs text-slate-500'>
                     Saved Card Payment is a programmatic component — it does not
                     render a UI and has no appearance configuration.
-                    <br /> Evrething that you see here is custom made and not
+                    <br /> Everything that you see here is custom made and not
                     part of the SDK.
                   </p>
                 </div>
@@ -1414,7 +1381,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
       }
     >
       {paymentResult?.status === 'success' ? (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <Check className='w-8 h-8 text-green-600' />
           </div>
@@ -1433,21 +1400,14 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             </pre>
           </div>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              setLoading(true)
-              setTimeout(() => {
-                setLoading(false)
-                window.location.reload()
-              }, 100)
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full shadow-md'
           >
             Start New Payment
           </button>
-        </div>
+        </PreviewState>
       ) : paymentResult?.status === 'error' ? (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <div className='text-red-600 font-bold text-2xl'>!</div>
           </div>
@@ -1458,18 +1418,15 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             {paymentResult.message}
           </p>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              window.location.reload()
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white w-full shadow-md'
           >
             Try Again
           </button>
-        </div>
+        </PreviewState>
       ) : isWalletEmbeddable && !isEmbeddableSupported ? (
         <div className='flex items-center justify-center m-auto min-h-96 w-full p-4'>
-          <div className='w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-5 space-y-3 text-center'>
+          <div className='w-full max-w-[420px] rounded-lg border border-slate-200 bg-white p-4 space-y-3 text-center sm:rounded-xl sm:p-5'>
             <div className='mx-auto w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center'>
               <AlertCircle className='w-5 h-5 text-slate-500' />
             </div>
@@ -1505,7 +1462,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
         </div>
       ) : embeddableType === 'savedCardPayment' ? (
         <div className='flex items-center justify-center m-auto w-full p-4'>
-          <div className='w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-6 space-y-5'>
+          <div className='w-full max-w-[420px] rounded-lg border border-slate-200 bg-white p-4 space-y-4 sm:rounded-xl sm:p-5 sm:space-y-5 md:p-6'>
             <div className='space-y-1'>
               <h3 className='text-sm font-semibold text-slate-900'>
                 Saved Card Payment
@@ -1608,15 +1565,49 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
           </div>
         </div>
       ) : (
-        <div
-          id='config-embeddable'
-          className={cn(
-            'transition-opacity duration-300 w-full',
-            loading
-              ? 'opacity-0 h-0 overflow-hidden'
-              : 'opacity-100 flex-1 flex items-center justify-center m-auto min-h-96 p-4'
-          )}
-        />
+        <>
+          <div
+            id='config-embeddable'
+            className={cn(
+              'transition-opacity duration-300 w-full',
+              loading
+                ? 'opacity-0 h-0 overflow-hidden'
+                : 'opacity-100 flex-1 flex items-center justify-center m-auto min-h-96 p-4'
+            )}
+          />
+          {!loading &&
+            embeddableType === 'paymentCard' &&
+            !cardConfig.submitButtonVisible &&
+            !paymentResult && (
+              <div className='flex gap-2 p-4 border-t border-slate-100'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  className='flex-1'
+                  disabled={isProcessing}
+                  onClick={async () => {
+                    const instance =
+                      sdkInstanceRef.current as PaymentCardInstance | null
+                    const result = await instance?.validate()
+                    logEvent('onValidation', result)
+                    setValidationState(result ?? null)
+                  }}
+                >
+                  Validate
+                </Button>
+                <Button
+                  type='button'
+                  className='flex-1 bg-indigo-600 hover:bg-indigo-700'
+                  disabled={isProcessing}
+                  onClick={() =>
+                    (sdkInstanceRef.current as PaymentCardInstance)?.submit()
+                  }
+                >
+                  {isProcessing ? 'Processing…' : 'Pay now'}
+                </Button>
+              </div>
+            )}
+        </>
       )}
     </ThreeColumnLayout>
   )

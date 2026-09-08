@@ -11,6 +11,9 @@ export default function handler(req: any, res: any) {
     description = 'Test Order',
     publicKey,
     apiKey,
+    orderType = 'purchase',
+    intervalType,
+    intervalValue,
   } = req.body
 
   if (!publicKey || !apiKey) {
@@ -44,9 +47,12 @@ export default function handler(req: any, res: any) {
     order: {
       orderId: orderId,
       description: description,
-      type: 'purchase',
+      type: orderType,
       amount: amount,
       currency: currency,
+      ...(orderType === 'recurring' && intervalType && intervalValue != null
+        ? { intervalType, intervalValue }
+        : {}),
     },
     cardTransactionMode: 'authAndCapture',
     backUrl: `${baseUrl}/inline-checkout`,

@@ -19,6 +19,10 @@ import {
   ShoppingCart,
   Layers,
   ShieldCheck,
+  LayoutTemplate,
+  ArrowUpCircle,
+  AlertCircle,
+  Gem,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -31,7 +35,7 @@ function Dashboard() {
     <div className='min-h-full bg-white'>
       <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12'>
         {/* Hero Section */}
-        <div className='text-center mb-12'>
+        <div className='text-center mb-8 sm:mb-12'>
           <div className='inline-flex items-center justify-center mb-6'>
             <img
               src='/xMoney_Logo.svg'
@@ -47,7 +51,7 @@ function Dashboard() {
         </div>
 
         {/* Getting Started Section */}
-        <div className='mb-12'>
+        <div className='mb-8 sm:mb-12'>
           <h2 className='text-2xl font-semibold text-slate-900 mb-6'>
             Getting Started
           </h2>
@@ -89,14 +93,14 @@ function Dashboard() {
                   <CardTitle className='text-lg'>2. Explore Examples</CardTitle>
                 </div>
                 <CardDescription>
-                  Browse interactive examples from the sidebar and see live
+                  Browse interactive examples from the header and see live
                   implementations
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className='text-sm text-slate-600 mb-4'>
                   Each example includes a live demo, source code, and
-                  documentation. Use the sidebar navigation to explore different
+                  documentation. Use the header navigation to explore different
                   payment scenarios.
                 </p>
                 <div className='flex items-center gap-2 text-sm text-slate-500'>
@@ -108,8 +112,178 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* Recommended path */}
+        <div className='mb-8 sm:mb-12'>
+          <h2 className='text-2xl font-semibold text-slate-900 mb-2'>
+            Recommended path
+          </h2>
+          <p className='text-slate-600 mb-6'>
+            Follow this sequence if you are new to the xMoney JS SDK.
+          </p>
+          <div className='grid gap-3'>
+            {[
+              {
+                step: '1',
+                title: 'Configure credentials',
+                description:
+                  'Use Setup API in the header. Invalid checksums usually mean a missing or mismatched secret key.',
+                icon: Key,
+              },
+              {
+                step: '2',
+                title: 'Payment Form Configuration',
+                to: '/payment-form/configuration',
+                description:
+                  'Learn init options, theming, wallets, and programmatic submit/validate.',
+                icon: Settings,
+              },
+              {
+                step: '3',
+                title: 'Checkout',
+                to: '/examples/checkout',
+                description:
+                  'See the payment form inside a real cart and order summary.',
+                icon: ShoppingCart,
+              },
+              {
+                step: '4',
+                title: 'Embedded Checkout',
+                to: '/examples/embedded-checkout',
+                description:
+                  'Compose paymentCard, saved cards, Google Pay, and Apple Pay yourself.',
+                icon: LayoutTemplate,
+              },
+              {
+                step: '5',
+                title: 'Migration v1 → v2',
+                to: '/migration',
+                description:
+                  'Upgrade existing integrators: namespace, async factories, and renamed callbacks.',
+                icon: ArrowUpCircle,
+              },
+            ].map((item) => {
+              const Icon = item.icon
+              const inner = (
+                <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors'>
+                  <CardContent className='pt-6 flex items-start gap-4'>
+                    <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 font-semibold'>
+                      {item.step}
+                    </div>
+                    <div className='flex-1 min-w-0'>
+                      <div className='flex items-center gap-2 mb-1'>
+                        <Icon className='w-4 h-4 text-blue-600' />
+                        <CardTitle className='text-base'>{item.title}</CardTitle>
+                      </div>
+                      <p className='text-sm text-slate-600'>{item.description}</p>
+                    </div>
+                    {item.to && (
+                      <ArrowRight className='w-4 h-4 mt-1 text-slate-400 shrink-0' />
+                    )}
+                  </CardContent>
+                </Card>
+              )
+              return item.to ? (
+                <Link key={item.step} to={item.to} className='block'>
+                  {inner}
+                </Link>
+              ) : (
+                <div key={item.step}>{inner}</div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Payment Form vs Embeddable */}
+        <div className='mb-8 sm:mb-12'>
+          <h2 className='text-2xl font-semibold text-slate-900 mb-2'>
+            Payment Form vs Embeddable Components
+          </h2>
+          <p className='text-slate-600 mb-6'>
+            Use the full payment form when you want a complete checkout widget.
+            Use embeddable components when you need to place card fields, wallets,
+            or saved-card charges into your own layout.
+          </p>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <Card className='border-2 border-slate-200'>
+              <CardHeader>
+                <CardTitle className='text-lg flex items-center gap-2'>
+                  <CreditCard className='w-5 h-5 text-indigo-600' />
+                  Payment Form
+                </CardTitle>
+                <CardDescription>
+                  <code className='text-xs'>window.XMoney.paymentForm()</code>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='text-sm text-slate-600 space-y-2'>
+                <p>
+                  Bundles card input, optional saved cards, Google Pay, and Apple
+                  Pay with a submit button and theming.
+                </p>
+                <p>
+                  Best for a drop-in checkout. Start with Configuration, then
+                  Checkout or the VELVET multi-step embeddable checkout.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className='border-2 border-slate-200'>
+              <CardHeader>
+                <CardTitle className='text-lg flex items-center gap-2'>
+                  <Layers className='w-5 h-5 text-purple-600' />
+                  Embeddable Components
+                </CardTitle>
+                <CardDescription>
+                  <code className='text-xs'>
+                    paymentCard / googlePay / applePay / savedCardPayment
+                  </code>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='text-sm text-slate-600 space-y-2'>
+                <p>
+                  Mount only the pieces you need. You own the CTA, tabs, and
+                  surrounding UI.
+                </p>
+                <p>
+                  Best for branded checkouts. Start with Component Configuration,
+                  then Custom CTA or Embedded Checkout.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Card className='mb-8 border-2 border-amber-200 bg-amber-50/60 sm:mb-12'>
+          <CardHeader>
+            <CardTitle className='text-lg flex items-center gap-2'>
+              <AlertCircle className='w-5 h-5 text-amber-600' />
+              Troubleshooting
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='text-sm text-slate-600 space-y-2'>
+            <p>
+              <span className='font-medium text-slate-900'>Missing credentials.</span>{' '}
+              Open Setup API in the header. Site ID, public key, and secret key
+              must belong to the same environment (test or live).
+            </p>
+            <p>
+              <span className='font-medium text-slate-900'>Invalid checksum.</span>{' '}
+              Usually the secret key in session storage does not match the public
+              key used to initialize the SDK.
+            </p>
+            <p>
+              <span className='font-medium text-slate-900'>SDK not loaded.</span>{' '}
+              Confirm secure.xmoney.com is reachable and the SDK script loads
+              in the page.
+            </p>
+            <p>
+              <span className='font-medium text-slate-900'>Wallets unavailable.</span>{' '}
+              Google Pay and Apple Pay depend on browser, device, and domain.
+              Demos surface capability checks where wallets are enabled.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Payment Form Features Section */}
-        <div className='mb-12'>
+        <div className='mb-8 sm:mb-12'>
           <div className='mb-6'>
             <h2 className='text-2xl font-semibold text-slate-900 mb-2'>
               Payment Form Features
@@ -221,7 +395,7 @@ function Dashboard() {
         </div>
 
         {/* Embeddable Components Section */}
-        <div className='mb-12'>
+        <div className='mb-8 sm:mb-12'>
           <div className='mb-6'>
             <h2 className='text-2xl font-semibold text-slate-900 mb-2'>
               Embeddable Components
@@ -336,11 +510,67 @@ function Dashboard() {
                 </Link>
               </CardContent>
             </Card>
+
+            <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
+              <CardHeader>
+                <div className='flex items-center gap-3 mb-2'>
+                  <ShoppingCart className='w-5 h-5 text-rose-600' />
+                  <CardTitle className='text-base'>Multi-step Checkout</CardTitle>
+                </div>
+                <CardDescription className='text-xs mb-3'>
+                  VELVET storefront with embeddable payment methods
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='flex flex-col flex-1 space-y-3'>
+                <p className='text-sm text-slate-600'>
+                  Cart, shipping, then payment using paymentCard, saved cards,
+                  Google Pay, and Apple Pay with custom appearance rules.
+                </p>
+                <Link to='/embeddable-components/multi-step-checkout' className='mt-auto'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='w-full justify-between group'
+                  >
+                    <span>View Example</span>
+                    <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
+              <CardHeader>
+                <div className='flex items-center gap-3 mb-2'>
+                  <Gem className='w-5 h-5 text-indigo-700' />
+                  <CardTitle className='text-base'>Jewelry Checkout</CardTitle>
+                </div>
+                <CardDescription className='text-xs mb-3'>
+                  LUMIÈRE editorial checkout with ultramarine SDK styling
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='flex flex-col flex-1 space-y-3'>
+                <p className='text-sm text-slate-600'>
+                  Modern jewelry storefront with persistent order sidebar, segmented
+                  payment tabs, and built-in saved cards on paymentCard.
+                </p>
+                <Link to='/embeddable-components/jewelry-checkout' className='mt-auto'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='w-full justify-between group'
+                  >
+                    <span>View Example</span>
+                    <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
         {/* Application Examples Section */}
-        <div className='mb-12'>
+        <div className='mb-8 sm:mb-12'>
           <div className='mb-6'>
             <h2 className='text-2xl font-semibold text-slate-900 mb-2'>
               Application Examples
@@ -440,6 +670,35 @@ function Dashboard() {
                 </Link>
               </CardContent>
             </Card>
+
+            <Card className='border-2 border-slate-200 hover:border-blue-300 transition-colors flex flex-col h-full'>
+              <CardHeader>
+                <div className='flex items-center gap-3 mb-2'>
+                  <Layers className='w-5 h-5 text-blue-600' />
+                  <CardTitle className='text-base'>Custom CTA</CardTitle>
+                </div>
+                <CardDescription className='text-xs mb-3'>
+                  Branded pay button with validate() and submit()
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='flex flex-col flex-1 space-y-3'>
+                <p className='text-sm text-slate-600'>
+                  Hide the iframe submit button and drive checkout with your own
+                  complete-purchase CTA. Typical pattern for embeddable
+                  paymentCard layouts.
+                </p>
+                <Link to='/examples/custom-cta' className='mt-auto'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='w-full justify-between group'
+                  >
+                    <span>View Example</span>
+                    <ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
@@ -461,7 +720,7 @@ function Dashboard() {
                     Setup API
                   </span>{' '}
                   button in the header to configure your credentials, then explore
-                  the examples from the sidebar.
+                  the examples from the header menu.
                 </p>
               </div>
               <div className='flex flex-col sm:flex-row gap-3 justify-center mt-4'>

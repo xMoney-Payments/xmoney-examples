@@ -13,6 +13,7 @@ import {
   Pencil,
   PlayCircle,
 } from 'lucide-react'
+import { PreviewState } from '@/components/preview-state'
 import {
   ThreeColumnLayout,
   type CodeTab,
@@ -31,9 +32,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { createSdkLogEvent, type SdkLogEvent } from '@/lib/sdk-events'
+import { assertXMoneyLoaded } from '@/lib/create-order'
 import type {
-  XMoneyPaymentFormConfig,
-  XMoneyPaymentFormInstance,
+  PaymentFormConfig,
+  PaymentFormInstance,
 } from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 type VerificationBehavior = 'auto' | 'always_continue' | 'always_cancel'
@@ -52,7 +55,12 @@ function loadPersistedSettings(): ChvPersistedSettings {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
   } catch {}
-  return { firstName: 'John', middleName: '', lastName: 'Doe', behavior: 'auto' }
+  return {
+    firstName: 'John',
+    middleName: '',
+    lastName: 'Doe',
+    behavior: 'auto',
+  }
 }
 
 function persistSettings(settings: ChvPersistedSettings) {
@@ -64,7 +72,11 @@ function persistSettings(settings: ChvPersistedSettings) {
 const testScenarios = [
   { status: 'MATCHED' as const, firstName: 'John', lastName: 'Doe' },
   { status: 'NOT_MATCHED' as const, firstName: 'Michael', lastName: 'Brown' },
-  { status: 'PARTIAL_MATCHED' as const, firstName: 'Sarah', lastName: 'Johnson' },
+  {
+    status: 'PARTIAL_MATCHED' as const,
+    firstName: 'Sarah',
+    lastName: 'Johnson',
+  },
   { status: 'NOT_VERIFIED' as const, firstName: 'David', lastName: 'Smith' },
   { status: 'NOT_SUPPORTED' as const, firstName: 'Emily', lastName: 'Davis' },
 ]
@@ -75,6 +87,12 @@ export const Route = createFileRoute('/payment-form/card-holder-verification')({
 
 function CardHolderVerification() {
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<SdkLogEvent[]>([])
+
+  const logEvent = (name: SdkLogEvent['name'], payload?: unknown) => {
+    setEvents((prev) => [...prev, createSdkLogEvent(name, payload)])
+  }
 
   // Payment specifics
   const [amount] = useState(50)
@@ -109,7 +127,8 @@ function CardHolderVerification() {
   // Verification behavior (ref to avoid SDK reinit on change)
   const [verificationBehavior, setVerificationBehavior] =
     useState<VerificationBehavior>(persisted.behavior)
-  const verificationBehaviorRef = useRef<VerificationBehavior>(verificationBehavior)
+  const verificationBehaviorRef =
+    useRef<VerificationBehavior>(verificationBehavior)
   verificationBehaviorRef.current = verificationBehavior
 
   // Snapshot of name sent to SDK (for display alongside result)
@@ -132,9 +151,17 @@ function CardHolderVerification() {
     checksum: string
   } | null>(null)
 
+  const [sessionId, setSessionId] = useState(0)
+
+  const restartPayment = () => {
+    setPaymentResult(null)
+    setVerificationResult(null)
+    setSessionId((n) => n + 1)
+  }
+
   useEffect(() => {
     let mounted = true
-    let sdkInstance: XMoneyPaymentFormInstance | null = null
+    let sdkInstance: PaymentFormInstance | null = null
 
     const initCheckout = async () => {
       setLoading(true)
@@ -166,13 +193,14 @@ function CardHolderVerification() {
         })
 
         if (window.XMoney) {
+          assertXMoneyLoaded()
           const container = document.getElementById(
             'card-holder-verification-payment-form'
           )
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: XMoneyPaymentFormConfig = {
+          const sdkConfig: PaymentFormConfig = {
             container: 'card-holder-verification-payment-form',
             publicKey: publicKey,
             orderPayload: data.payload,
@@ -180,6 +208,7 @@ function CardHolderVerification() {
             card: {
               validationMode: 'onBlur',
               savedCards: { enabled: false },
+              inputs: { grouping: 'spaced' },
               cardHolderVerification: {
                 name: {
                   firstName: verificationData.firstName,
@@ -205,10 +234,10 @@ function CardHolderVerification() {
             },
             onReady: () => {
               if (mounted) setLoading(false)
-              console.log('Payment form ready')
+              logEvent('onReady')
             },
-            onError: (err: any) => {
-              console.error('Payment error', err)
+            onError: (err: { code: number | string; message: string } | string) => {
+              logEvent('onError', err)
               if (mounted) {
                 setLoading(false)
                 setPaymentResult({
@@ -220,7 +249,11 @@ function CardHolderVerification() {
                 })
               }
             },
+            onPaymentProcessing: (isProcessing) => {
+              logEvent('onPaymentProcessing', { isProcessing })
+            },
             onPaymentComplete: (transaction) => {
+              logEvent('onPaymentComplete', transaction)
               if (mounted) {
                 setLoading(false)
                 setPaymentResult({
@@ -231,11 +264,20 @@ function CardHolderVerification() {
             },
           }
           sdkInstance = await window.XMoney.paymentForm(sdkConfig)
+        } else {
+          throw new Error(
+            'xMoney SDK is not loaded. Check the SDK version in the header and refresh the page.'
+          )
         }
       } catch (err) {
         console.error(err)
         if (mounted) {
           setLoading(false)
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to initialize checkout'
+          )
         }
       }
     }
@@ -256,6 +298,7 @@ function CardHolderVerification() {
     verificationData.firstName,
     verificationData.middleName,
     verificationData.lastName,
+    sessionId,
   ])
 
   const getStatusIcon = (status: MatchStatusEnum) => {
@@ -320,6 +363,7 @@ const checkout = await window.XMoney.paymentForm({
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
   card: {
     savedCards: { enabled: false },
+    inputs: { grouping: 'spaced' },
     cardHolderVerification: {
       name: {
         firstName: '${verificationData.firstName}',
@@ -391,15 +435,14 @@ const checksum = getBase64Checksum(orderData, apiKey)
       title='Card Holder Verification'
       icon={<UserSquare2 className='w-4 h-4' />}
       loading={loading}
-      onRefresh={() => {
-        setLoading(true)
-        // Force re-render hack
-        window.location.reload()
-      }}
+      error={error}
+      onRefresh={restartPayment}
+      events={events}
+      onClearEvents={() => setEvents([])}
       codeTabs={codeTabs}
       sidebarContent={
         <div className='flex flex-col h-full'>
-          <div className='px-6 pt-4 pb-2 border-b border-slate-200'>
+          <div className='border-b border-slate-200 px-4 pt-4 pb-2 sm:px-6'>
             <h2 className='text-sm font-semibold text-slate-900 mb-1'>
               Card Holder Name Verification
             </h2>
@@ -408,7 +451,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
               to enhance security.
             </p>
           </div>
-          <div className='flex-1 overflow-y-auto p-6 space-y-6'>
+          <div className='flex-1 overflow-y-auto space-y-4 p-4 sm:space-y-6 sm:p-5 md:p-6'>
             {/* Test Combinations */}
             <div className='space-y-3'>
               <div className='flex items-center gap-2'>
@@ -449,7 +492,8 @@ const checksum = getBase64Checksum(orderData, apiKey)
                 <SelectContent>
                   {testScenarios.map((scenario) => (
                     <SelectItem key={scenario.status} value={scenario.status}>
-                      {scenario.status} - {scenario.firstName} {scenario.lastName}
+                      {scenario.status} - {scenario.firstName}{' '}
+                      {scenario.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -471,7 +515,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
               </p>
               <div className='space-y-2'>
                 <div>
-                  <Label htmlFor='chv-firstName' className='text-xs text-slate-600'>
+                  <Label
+                    htmlFor='chv-firstName'
+                    className='text-xs text-slate-600'
+                  >
                     First Name
                   </Label>
                   <Input
@@ -486,7 +533,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
                   />
                 </div>
                 <div>
-                  <Label htmlFor='chv-middleName' className='text-xs text-slate-600'>
+                  <Label
+                    htmlFor='chv-middleName'
+                    className='text-xs text-slate-600'
+                  >
                     Middle Name
                   </Label>
                   <Input
@@ -501,7 +551,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
                   />
                 </div>
                 <div>
-                  <Label htmlFor='chv-lastName' className='text-xs text-slate-600'>
+                  <Label
+                    htmlFor='chv-lastName'
+                    className='text-xs text-slate-600'
+                  >
                     Last Name
                   </Label>
                   <Input
@@ -755,7 +808,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
     >
       {/* Success State */}
       {paymentResult?.status === 'success' && (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <Check className='w-8 h-8 text-green-600' />
           </div>
@@ -774,21 +827,17 @@ const checksum = getBase64Checksum(orderData, apiKey)
             </pre>
           </div>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              setVerificationResult(null)
-              window.location.reload()
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white shadow-md'
           >
             Start New Payment
           </button>
-        </div>
+        </PreviewState>
       )}
 
       {/* Error State */}
       {paymentResult?.status === 'error' && (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <XCircle className='w-8 h-8 text-red-600' />
           </div>
@@ -800,15 +849,12 @@ const checksum = getBase64Checksum(orderData, apiKey)
               'An error occurred during payment processing.'}
           </p>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              window.location.reload()
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white shadow-md'
           >
             Try Again
           </button>
-        </div>
+        </PreviewState>
       )}
 
       {/* Payment Form Container */}

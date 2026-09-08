@@ -1,19 +1,16 @@
 import type {
-  XMoneyPaymentCardConfig,
-  XMoneyPaymentCardInstance,
-} from './payment-card-sdk.types'
+  PaymentCardConfig,
+  PaymentCardInstance,
+} from "./payment-card-sdk.types";
 import type {
-  ApplePayButtonStyle,
-  ApplePayButtonType,
-  GooglePayButtonBorderType,
-  GooglePayButtonColor,
-  GooglePayButtonType,
-} from './sdk-base.types'
+  ApplePayAppearance,
+  GooglePayAppearance,
+} from "./sdk-base.types";
 
 /**
- * Configuration options for initializing and customizing the xMoney payment form.
+ * Configuration options for initializing and customizing the payment form.
  */
-export interface XMoneyPaymentFormConfig extends XMoneyPaymentCardConfig {
+export interface PaymentFormConfig extends PaymentCardConfig {
   paymentMethods?: {
     /**
      * Configuration for google payment methods.
@@ -24,34 +21,12 @@ export interface XMoneyPaymentFormConfig extends XMoneyPaymentCardConfig {
        *
        * @defaultValue `false`
        */
-      enabled?: boolean
+      enabled?: boolean;
       /**
-       * Appearance customization for Google Pay button.
+       * Official Google Pay button options. Custom artwork is not allowed.
        */
-      appearance?: {
-        /**
-         * Style of the Google Pay button.
-         *
-         * @defaultValue `"black"` when theme is light, `"white"` when theme is dark
-         */
-        color?: GooglePayButtonColor
-        /**
-         * Corner radius of the Google Pay button.
-         * @defaultValue `12`
-         */
-        radius?: number
-        /**
-         *  Type of the Google Pay button.
-         * @defaultValue `"pay"`
-         */
-        type?: GooglePayButtonType
-        /**
-         * Border type of the Google Pay button.
-         * @defaultValue `"no_border"`
-         */
-        borderType?: GooglePayButtonBorderType
-      }
-    }
+      appearance?: GooglePayAppearance;
+    };
     /**
      * Configuration for apple payment methods.
      */
@@ -61,32 +36,16 @@ export interface XMoneyPaymentFormConfig extends XMoneyPaymentCardConfig {
        *
        * @defaultValue `false`
        */
-      enabled?: boolean
+      enabled?: boolean;
       /**
-       * Appearance customization for Apple Pay button.
+       * Official Apple Pay button options. Custom artwork is not allowed.
        */
-      appearance?: {
-        /**
-         * Style of the Apple Pay button.
-         * @defaultValue `"black"` when theme is light, `"white"` when theme is dark
-         */
-        style?: ApplePayButtonStyle
-        /**
-         * Corner radius of the Apple Pay button.
-         * @defaultValue `12`
-         */
-        radius?: number
-        /**
-         * Type of the Apple Pay button.
-         * @defaultValue `"pay"`
-         */
-        type?: ApplePayButtonType
-      }
-    }
-  }
+      appearance?: ApplePayAppearance;
+    };
+  };
 }
 
 /**
- * Represents an instance of the XMoney payment form, providing methods to interact with and manage the form.
+ * Represents an instance of the payment form, providing methods to interact with and manage the form.
  */
-export interface XMoneyPaymentFormInstance extends XMoneyPaymentCardInstance {}
+export interface PaymentFormInstance extends PaymentCardInstance {}

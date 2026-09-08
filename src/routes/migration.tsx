@@ -139,7 +139,7 @@ function NewList({
 function MigrationPage() {
   return (
     <div className='min-h-full bg-white'>
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10'>
         {/* Hero */}
         <div className='mb-10'>
           <div className='flex flex-wrap items-center gap-3 mb-4'>
@@ -161,10 +161,10 @@ function MigrationPage() {
           </p>
         </div>
 
-        <div className='space-y-10'>
+        <div className='space-y-6 sm:space-y-10'>
           {/* 1. Global API */}
           <Card className='border-red-200 pt-0'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-4 sm:pt-6'>
               <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <Layout className='w-4 h-4 text-red-600' />
@@ -194,11 +194,11 @@ function MigrationPage() {
                 v2={`declare global {
   interface Window {
     XMoney: {
-      paymentForm(config): Promise<XMoneyPaymentFormInstance>;
-      paymentCard(config): Promise<XMoneyPaymentCardInstance>;
-      savedCardPayment(config): Promise<XMoneySavedCardPaymentInstance>;
-      googlePay(config): Promise<XMoneyGooglePayInstance>;
-      applePay(config): Promise<XMoneyApplePayInstance>;
+      paymentForm(config): Promise<PaymentFormInstance>;
+      paymentCard(config): Promise<PaymentCardInstance>;
+      savedCardPayment(config): Promise<SavedCardPaymentInstance>;
+      googlePay(config): Promise<GooglePayInstance>;
+      applePay(config): Promise<ApplePayInstance>;
       getPaymentMethodCapabilities(): Promise<PaymentMethodCapabilities>;
     };
   }
@@ -209,7 +209,7 @@ function MigrationPage() {
 
           {/* 2. Instantiation */}
           <Card className='border-red-200 pt-0'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-4 sm:pt-6'>
               <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <Zap className='w-4 h-4 text-red-600' />
@@ -245,11 +245,11 @@ const form = await window.XMoney.paymentForm(config);`}
 
           {/* 3. PaymentFormConfig */}
           <Card className='border-red-200 pt-0'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-4 sm:pt-6'>
               <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <CreditCard className='w-4 h-4 text-red-600' />
-                  XMoneyPaymentFormConfig — full comparison
+                  PaymentFormConfig — full comparison
                 </CardTitle>
                 <Badge variant='breaking'>Breaking change</Badge>
               </div>
@@ -418,6 +418,11 @@ const form = await window.XMoney.paymentForm(config);`}
                             status: 'moved',
                           },
                           {
+                            v1: '—',
+                            v2: 'card.inputs.grouping',
+                            status: 'new',
+                          },
+                          {
                             v1: 'options.enableBackgroundRefresh',
                             v2: '—',
                             status: 'removed',
@@ -479,7 +484,7 @@ const form = await window.XMoney.paymentForm(config);`}
                 </p>
                 <DiffBlock
                   v1={`
-interface XMoneyPaymentFormConfig{
+interface PaymentFormConfig{
   options?: {
     // Appearance
     appearance?: {
@@ -491,7 +496,7 @@ interface XMoneyPaymentFormConfig{
     buttonType?: "book" | "buy" | "checkout" | "donate"
                | "order" | "pay" | "subscribe" | "topUp"
     validationMode?: "onSubmit" | "onChange" | "onBlur" | "onTouched"
-    locale?: "en-US" | "el-GR" | "ro-RO"
+    locale?: "en-US" | "el-GR" | "ro-RO" | "bg-BG" | "hu-HU" | "pl-PL"
     enableSavedCards?: boolean
     enableBackgroundRefresh?: boolean
     displaySaveCardOption?: boolean
@@ -527,7 +532,7 @@ interface XMoneyPaymentFormConfig{
   onSubmitPending?: (isPending: boolean) => void
 }`}
                   v2={`
-interface XMoneyPaymentFormConfig  {
+interface PaymentFormConfig  {
   card?: {
     validationMode?: "onSubmit" | "onChange" | "onBlur" | "onTouched"
     savedCards?: {
@@ -550,7 +555,7 @@ interface XMoneyPaymentFormConfig  {
       variables?: Record<string, string>
       rules?: Record<string, Record<string, string>>
     }
-    locale?: "en-US" | "el-GR" | "ro-RO"
+    locale?: "en-US" | "el-GR" | "ro-RO" | "bg-BG" | "hu-HU" | "pl-PL"
   }
   paymentMethods?: {
     googlePay?: {
@@ -585,11 +590,11 @@ interface XMoneyPaymentFormConfig  {
 
           {/* 4. PaymentFormInstance */}
           <Card className='border-amber-200 pt-0'>
-            <CardHeader className='pb-3 border-b border-amber-100 bg-amber-50/60 rounded-t-xl pt-6'>
+            <CardHeader className='pb-3 border-b border-amber-100 bg-amber-50/60 rounded-t-xl pt-4 sm:pt-6'>
               <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <Zap className='w-4 h-4 text-amber-600' />
-                  XMoneyPaymentFormInstance — full comparison
+                  PaymentFormInstance — full comparison
                 </CardTitle>
                 <div className='flex gap-2'>
                   <Badge variant='new'>New method</Badge>
@@ -644,8 +649,8 @@ interface XMoneyPaymentFormConfig  {
                         },
                         {
                           method: 'updateLocale',
-                          v1: '(locale: "en-US" | "el-GR" | "ro-RO") => void',
-                          v2: '(locale: "en-US" | "el-GR" | "ro-RO") => void',
+                          v1: '(locale: "en-US" | "el-GR" | "ro-RO" | "bg-BG" | "hu-HU" | "pl-PL") => void',
+                          v2: '(locale: "en-US" | "el-GR" | "ro-RO" | "bg-BG" | "hu-HU" | "pl-PL") => void',
                           status: 'unchanged',
                         },
                         {
@@ -716,12 +721,12 @@ interface XMoneyPaymentFormConfig  {
                 </p>
                 <DiffBlock
                   v1={`
-interface XMoneyPaymentFormInstance {
+interface PaymentFormInstance {
   updateOrder({ orderPayload: string, orderChecksum: string }): void
   close(): void
   destroy(): void
 
-  updateLocale(locale: "en-US" | "el-GR" | "ro-RO"): void
+  updateLocale(locale: "en-US" | "el-GR" | "ro-RO" | "bg-BG" | "hu-HU" | "pl-PL"): void
   updateAppearance(appearance: {
     theme?: "light" | "dark" | "custom"
     variables?: Record<string, string>
@@ -731,11 +736,11 @@ interface XMoneyPaymentFormInstance {
   // validate() — does not exist in v1
 }`}
                   v2={`
-interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
+interface PaymentFormInstance extends BaseInstance {
   updateOrder({ orderPayload: string, orderChecksum: string }): void
   destroy(): void
 
-  updateLocale(locale: "en-US" | "el-GR" | "ro-RO"): void
+  updateLocale(locale: "en-US" | "el-GR" | "ro-RO" | "bg-BG" | "hu-HU" | "pl-PL"): void
   updateAppearance(appearance: {
     theme?: "light" | "dark" | "custom"
     variables?: Record<string, string>
@@ -756,7 +761,7 @@ interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
 
           {/* 5. TransactionDetails */}
           <Card className='border-red-200 pt-0'>
-            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-6'>
+            <CardHeader className='pb-3 border-b border-red-100 bg-red-50/60 rounded-t-xl pt-4 sm:pt-6'>
               <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                 <CardTitle className='text-base flex items-center gap-2'>
                   <RefreshCw className='w-4 h-4 text-red-600' />
@@ -822,7 +827,7 @@ interface XMoneyPaymentFormInstance extends XMoneyBaseInstance {
             </div>
             <div className='space-y-6'>
               <Card className='border-emerald-200 pt-0'>
-                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-6'>
+                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-4 sm:pt-6'>
                   <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                     <CardTitle className='text-base flex items-center gap-2'>
                       <Layers className='w-4 h-4 text-emerald-600' />
@@ -874,7 +879,7 @@ saved.pay({ cardId: 42 });`}
               </Card>
 
               <Card className='border-emerald-200 pt-0'>
-                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-6'>
+                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-4 sm:pt-6'>
                   <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                     <CardTitle className='text-base flex items-center gap-2'>
                       <Zap className='w-4 h-4 text-emerald-600' />
@@ -899,7 +904,7 @@ saved.pay({ cardId: 42 });`}
               </Card>
 
               <Card className='border-emerald-200 pt-0'>
-                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-6'>
+                <CardHeader className='pb-3 border-b border-emerald-100 bg-emerald-50/60 rounded-t-xl pt-4 sm:pt-6'>
                   <div className='flex items-center justify-between flex-col sm:flex-row gap-2'>
                     <CardTitle className='text-base flex items-center gap-2'>
                       <CheckCircle2 className='w-4 h-4 text-emerald-600' />
@@ -917,7 +922,7 @@ saved.pay({ cardId: 42 });`}
                     rows={[
                       {
                         v1: '— (not available)',
-                        v2: 'XMoneyPaymentFormInstance.validate()\n→ { isValid, errors: Record<string, { message: string, code: string }> }',
+                        v2: 'PaymentFormInstance.validate()\n→ { isValid, errors: Record<string, { message: string, code: string }> }',
                         note: 'Synchronous on the form instance',
                       },
                     ]}
@@ -929,7 +934,7 @@ saved.pay({ cardId: 42 });`}
 
           {/* Checklist */}
           <Card className='border-blue-200 pt-0 bg-gradient-to-br from-blue-50 to-slate-50'>
-            <CardHeader className='pb-3 border-b border-blue-100 rounded-t-xl pt-6'>
+            <CardHeader className='pb-3 border-b border-blue-100 rounded-t-xl pt-4 sm:pt-6'>
               <CardTitle className='text-base flex items-center gap-2 text-blue-800'>
                 <CheckCircle2 className='w-4 h-4' />
                 Migration checklist

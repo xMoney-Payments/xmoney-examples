@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getApiCredentials } from '@/lib/credentials'
 import { cn } from '@/lib/utils'
 import {
@@ -10,7 +10,10 @@ import {
   AlertCircle,
   TestTube,
   Check,
+  Pencil,
+  PlayCircle,
 } from 'lucide-react'
+import { PreviewState } from '@/components/preview-state'
 import {
   ThreeColumnLayout,
   type CodeTab,
@@ -26,10 +29,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { createSdkLogEvent, type SdkLogEvent } from '@/lib/sdk-events'
+import { assertXMoneyLoaded } from '@/lib/create-order'
 import type {
-  XMoneyPaymentCardConfig,
-  XMoneyPaymentCardInstance,
+  PaymentCardConfig,
+  PaymentCardInstance,
 } from '@/types/xmoney-sdk/payment-card-sdk.types'
+
+type VerificationBehavior = 'auto' | 'always_continue' | 'always_cancel'
+
+const STORAGE_KEY = 'chv-embeddable-settings'
+
+interface ChvPersistedSettings {
+  firstName: string
+  middleName: string
+  lastName: string
+  behavior: VerificationBehavior
+}
+
+function loadPersistedSettings(): ChvPersistedSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return {
+    firstName: 'John',
+    middleName: '',
+    lastName: 'Doe',
+    behavior: 'auto',
+  }
+}
+
+function persistSettings(settings: ChvPersistedSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+  } catch {}
+}
 
 export const Route = createFileRoute(
   '/embeddable-components/card-holder-verification'
@@ -39,19 +77,28 @@ export const Route = createFileRoute(
 
 function CardHolderVerification() {
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<SdkLogEvent[]>([])
 
-  // Payment specifics
+  const logEvent = (name: SdkLogEvent['name'], payload?: unknown) => {
+    setEvents((prev) => [...prev, createSdkLogEvent(name, payload)])
+  }
+
   const [amount] = useState(50)
   const [currency] = useState('EUR')
 
-  // Card Holder Verification Data
+  const [persisted] = useState(loadPersistedSettings)
+
   const [verificationData, setVerificationData] = useState({
-    firstName: 'John',
-    middleName: '',
-    lastName: 'Doe',
+    firstName: persisted.firstName,
+    middleName: persisted.middleName,
+    lastName: persisted.lastName,
   })
 
-  // Test scenario mapping
+  const [inputFirstName, setInputFirstName] = useState(persisted.firstName)
+  const [inputMiddleName, setInputMiddleName] = useState(persisted.middleName)
+  const [inputLastName, setInputLastName] = useState(persisted.lastName)
+
   const testScenarios = [
     {
       status: 'MATCHED' as const,
@@ -85,11 +132,25 @@ function CardHolderVerification() {
     },
   ]
 
-  // Verification result
+  const [activeScenario, setActiveScenario] = useState<string>(() => {
+    const match = testScenarios.find(
+      (s) =>
+        s.firstName === persisted.firstName &&
+        s.lastName === persisted.lastName &&
+        persisted.middleName === ''
+    )
+    return match?.status ?? ''
+  })
+
+  const [verificationBehavior, setVerificationBehavior] =
+    useState<VerificationBehavior>(persisted.behavior)
+  const verificationBehaviorRef =
+    useRef<VerificationBehavior>(verificationBehavior)
+  verificationBehaviorRef.current = verificationBehavior
+
   const [verificationResult, setVerificationResult] =
     useState<CardHolderVerificationResult | null>(null)
 
-  // Payment result
   const [paymentResult, setPaymentResult] = useState<{
     status: 'success' | 'error'
     message?: string
@@ -101,12 +162,21 @@ function CardHolderVerification() {
     checksum: string
   } | null>(null)
 
+  const [sessionId, setSessionId] = useState(0)
+
+  const restartPayment = () => {
+    setPaymentResult(null)
+    setVerificationResult(null)
+    setSessionId((n) => n + 1)
+  }
+
   useEffect(() => {
     let mounted = true
-    let sdkInstance: XMoneyPaymentCardInstance | null = null
+    let sdkInstance: PaymentCardInstance | null = null
 
     const initCheckout = async () => {
       setLoading(true)
+      setError(null)
 
       try {
         const { publicKey, apiKey } = getApiCredentials()
@@ -134,72 +204,80 @@ function CardHolderVerification() {
           checksum: data.checksum,
         })
 
-        if (window.XMoney) {
-          const container = document.getElementById(
-            'card-holder-verification-payment-card'
-          )
-          if (!container) return
-          container.innerHTML = ''
+        assertXMoneyLoaded()
+        const container = document.getElementById(
+          'card-holder-verification-payment-card'
+        )
+        if (!container) return
+        container.innerHTML = ''
 
-          const sdkConfig: XMoneyPaymentCardConfig = {
-            container: 'card-holder-verification-payment-card',
-            publicKey: publicKey,
-            orderPayload: data.payload,
-            orderChecksum: data.checksum,
-            card: {
-              validationMode: 'onBlur',
-              savedCards: { enabled: false }, // Disable saved cards for this demo
-              cardHolderVerification: {
-                name: {
-                  firstName: verificationData.firstName,
-                  middleName: verificationData.middleName,
-                  lastName: verificationData.lastName,
-                },
-                onCardHolderVerification: (
-                  result: CardHolderVerificationResult
-                ) => {
-                  console.log('Card holder verification result:', result)
-                  setVerificationResult(result)
-                  // Proceed only if status is MATCHED
-                  return result.status === MatchStatusEnum.Matched
-                },
+        const sdkConfig: PaymentCardConfig = {
+          container: 'card-holder-verification-payment-card',
+          publicKey: publicKey,
+          orderPayload: data.payload,
+          orderChecksum: data.checksum,
+          card: {
+            validationMode: 'onBlur',
+            savedCards: { enabled: false },
+            inputs: { grouping: 'spaced' },
+            cardHolderVerification: {
+              name: {
+                firstName: verificationData.firstName,
+                middleName: verificationData.middleName,
+                lastName: verificationData.lastName,
+              },
+              onCardHolderVerification: (
+                result: CardHolderVerificationResult
+              ) => {
+                setVerificationResult(result)
+                const behavior = verificationBehaviorRef.current
+                if (behavior === 'always_continue') return true
+                if (behavior === 'always_cancel') return false
+                return result.status === MatchStatusEnum.Matched
               },
             },
-            options: {
-              locale: 'en-US',
-            },
-            onReady: () => {
-              if (mounted) setLoading(false)
-              console.log('Payment form ready')
-            },
-            onError: (err: any) => {
-              console.error('Payment error', err)
-              if (mounted) {
-                setLoading(false)
-                setPaymentResult({
-                  status: 'error',
-                  message:
-                    typeof err === 'string'
-                      ? err
-                      : err?.message || 'Payment failed',
-                })
-              }
-            },
-            onPaymentComplete: () => {
-              if (mounted) {
-                setLoading(false)
-                setPaymentResult({
-                  status: 'success',
-                })
-              }
-            },
-          }
-          sdkInstance = await window.XMoney.paymentCard(sdkConfig)
+          },
+          options: {
+            locale: 'en-US',
+          },
+          onReady: () => {
+            if (mounted) setLoading(false)
+            logEvent('onReady')
+          },
+          onError: (err: { code: number | string; message: string } | string) => {
+            logEvent('onError', err)
+            if (mounted) {
+              setLoading(false)
+              setPaymentResult({
+                status: 'error',
+                message:
+                  typeof err === 'string'
+                    ? err
+                    : err?.message || 'Payment failed',
+              })
+            }
+          },
+          onPaymentProcessing: (isProcessing) => {
+            logEvent('onPaymentProcessing', { isProcessing })
+          },
+          onPaymentComplete: () => {
+            logEvent('onPaymentComplete')
+            if (mounted) {
+              setLoading(false)
+              setPaymentResult({
+                status: 'success',
+              })
+            }
+          },
         }
+        sdkInstance = await window.XMoney.paymentCard(sdkConfig)
       } catch (err) {
         console.error(err)
         if (mounted) {
           setLoading(false)
+          setError(
+            err instanceof Error ? err.message : 'Failed to initialize checkout'
+          )
         }
       }
     }
@@ -220,6 +298,7 @@ function CardHolderVerification() {
     verificationData.firstName,
     verificationData.middleName,
     verificationData.lastName,
+    sessionId,
   ])
 
   const getStatusIcon = (status: MatchStatusEnum) => {
@@ -284,6 +363,7 @@ const checkout = await window.XMoney.paymentCard({
   orderChecksum: '${initData?.checksum ? initData.checksum.substring(0, 30) + '...' : '<YOUR_ORDER_CHECKSUM>'}',
   card: {
     savedCards: { enabled: false }, // Disable saved cards for this demo
+    inputs: { grouping: 'spaced' },
     cardHolderVerification: {
       name: {
         firstName: '${verificationData.firstName}',
@@ -348,15 +428,14 @@ const checksum = getBase64Checksum(orderData, apiKey)
       title='Payment Card - Card Holder Verification'
       icon={<UserSquare2 className='w-4 h-4' />}
       loading={loading}
-      onRefresh={() => {
-        setLoading(true)
-        // Force re-render hack
-        window.location.reload()
-      }}
+      error={error}
+      onRefresh={restartPayment}
+      events={events}
+      onClearEvents={() => setEvents([])}
       codeTabs={codeTabs}
       sidebarContent={
         <div className='flex flex-col h-full'>
-          <div className='px-6 pt-4 pb-2 border-b border-slate-200'>
+          <div className='border-b border-slate-200 px-4 pt-4 pb-2 sm:px-6'>
             <h2 className='text-sm font-semibold text-slate-900 mb-1'>
               Card Holder Name Verification
             </h2>
@@ -371,7 +450,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
               </p>
             </div>
           </div>
-          <div className='flex-1 overflow-y-auto p-6 space-y-6'>
+          <div className='flex-1 overflow-y-auto space-y-4 p-4 sm:space-y-6 sm:p-5 md:p-6'>
             {/* Test Combinations */}
             <div className='space-y-3'>
               <div className='flex items-center gap-2'>
@@ -385,20 +464,24 @@ const checksum = getBase64Checksum(orderData, apiKey)
                 results
               </p>
               <Select
-                value={
-                  testScenarios.find(
-                    (scenario) =>
-                      scenario.firstName === verificationData.firstName &&
-                      scenario.lastName === verificationData.lastName
-                  )?.status || ''
-                }
+                value={activeScenario}
                 onValueChange={(value) => {
                   const scenario = testScenarios.find((s) => s.status === value)
                   if (scenario) {
+                    setActiveScenario(value)
+                    setInputFirstName(scenario.firstName)
+                    setInputMiddleName('')
+                    setInputLastName(scenario.lastName)
                     setVerificationData({
                       firstName: scenario.firstName,
                       middleName: '',
                       lastName: scenario.lastName,
+                    })
+                    persistSettings({
+                      firstName: scenario.firstName,
+                      middleName: '',
+                      lastName: scenario.lastName,
+                      behavior: verificationBehavior,
                     })
                   }
                 }}
@@ -412,6 +495,123 @@ const checksum = getBase64Checksum(orderData, apiKey)
                       {scenario.status} - {scenario.displayName}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className='h-px bg-slate-200' />
+
+            <div className='space-y-3'>
+              <div className='flex items-center gap-2'>
+                <Pencil className='w-4 h-4 text-slate-600' />
+                <h3 className='text-sm font-semibold text-slate-900'>
+                  Custom Name
+                </h3>
+              </div>
+              <div className='space-y-2'>
+                <div>
+                  <Label htmlFor='chv-firstName' className='text-xs text-slate-600'>
+                    First Name
+                  </Label>
+                  <Input
+                    id='chv-firstName'
+                    value={inputFirstName}
+                    onChange={(e) => {
+                      setInputFirstName(e.target.value)
+                      setActiveScenario('')
+                    }}
+                    className='h-8 text-sm mt-1'
+                  />
+                </div>
+                <div>
+                  <Label htmlFor='chv-middleName' className='text-xs text-slate-600'>
+                    Middle Name
+                  </Label>
+                  <Input
+                    id='chv-middleName'
+                    value={inputMiddleName}
+                    onChange={(e) => {
+                      setInputMiddleName(e.target.value)
+                      setActiveScenario('')
+                    }}
+                    className='h-8 text-sm mt-1'
+                  />
+                </div>
+                <div>
+                  <Label htmlFor='chv-lastName' className='text-xs text-slate-600'>
+                    Last Name
+                  </Label>
+                  <Input
+                    id='chv-lastName'
+                    value={inputLastName}
+                    onChange={(e) => {
+                      setInputLastName(e.target.value)
+                      setActiveScenario('')
+                    }}
+                    className='h-8 text-sm mt-1'
+                  />
+                </div>
+              </div>
+              <Button
+                size='sm'
+                className='w-full'
+                disabled={
+                  inputFirstName === verificationData.firstName &&
+                  inputMiddleName === verificationData.middleName &&
+                  inputLastName === verificationData.lastName
+                }
+                onClick={() => {
+                  setVerificationData({
+                    firstName: inputFirstName,
+                    middleName: inputMiddleName,
+                    lastName: inputLastName,
+                  })
+                  persistSettings({
+                    firstName: inputFirstName,
+                    middleName: inputMiddleName,
+                    lastName: inputLastName,
+                    behavior: verificationBehavior,
+                  })
+                }}
+              >
+                Apply & Reinitialize
+              </Button>
+            </div>
+
+            <div className='h-px bg-slate-200' />
+
+            <div className='space-y-3'>
+              <div className='flex items-center gap-2'>
+                <PlayCircle className='w-4 h-4 text-slate-600' />
+                <h3 className='text-sm font-semibold text-slate-900'>
+                  Payment Decision
+                </h3>
+              </div>
+              <Select
+                value={verificationBehavior}
+                onValueChange={(value: string) => {
+                  setVerificationBehavior(value as VerificationBehavior)
+                  persistSettings({
+                    firstName: verificationData.firstName,
+                    middleName: verificationData.middleName,
+                    lastName: verificationData.lastName,
+                    behavior: value as VerificationBehavior,
+                  })
+                }}
+              >
+                <SelectTrigger className='h-9 text-sm'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='auto'>
+                    Auto (proceed only on MATCHED)
+                  </SelectItem>
+                  <SelectItem value='always_continue'>
+                    Always continue payment
+                  </SelectItem>
+                  <SelectItem value='always_cancel'>
+                    Always cancel payment
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -572,7 +772,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
     >
       {/* Success State */}
       {paymentResult?.status === 'success' && (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <Check className='w-8 h-8 text-green-600' />
           </div>
@@ -583,20 +783,16 @@ const checksum = getBase64Checksum(orderData, apiKey)
             Your payment has been processed successfully.
           </p>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              setVerificationResult(null)
-              window.location.reload()
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white shadow-md'
           >
             Start New Payment
           </button>
-        </div>
+        </PreviewState>
       )}
       {/* Error State */}
       {paymentResult?.status === 'error' && (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <XCircle className='w-8 h-8 text-red-600' />
           </div>
@@ -608,15 +804,12 @@ const checksum = getBase64Checksum(orderData, apiKey)
               'An error occurred during payment processing.'}
           </p>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              window.location.reload()
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white shadow-md'
           >
             Try Again
           </button>
-        </div>
+        </PreviewState>
       )}
       {/* Payment Card Container */}
       <div
