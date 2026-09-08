@@ -1,44 +1,36 @@
 import {
-  XMoneyApplePayConfig,
-  XMoneyApplePayInstance,
-} from "./xmoney-sdk/apple-pay-sdk.types";
+  ApplePayConfig,
+  ApplePayInstance,
+} from './xmoney-sdk/apple-pay-sdk.types'
 import {
-  XMoneyPaymentCardConfig,
-  XMoneyPaymentCardInstance,
-} from "./xmoney-sdk/payment-card-sdk.types";
+  PaymentCardConfig,
+  PaymentCardInstance,
+} from './xmoney-sdk/payment-card-sdk.types'
 import {
-  XMoneyGooglePayInstance,
-  XMoneyGooglePayConfig,
-} from "./xmoney-sdk/google-pay-sdk.types";
+  GooglePayInstance,
+  GooglePayConfig,
+} from './xmoney-sdk/google-pay-sdk.types'
 import {
-  XMoneyPaymentFormConfig,
-  XMoneyPaymentFormInstance,
-} from "./xmoney-sdk/payment-form-sdk.types";
-import { PaymentMethodCapabilities } from "./xmoney-sdk/payment-method-capabilities.types";
+  PaymentFormConfig,
+  PaymentFormInstance,
+} from './xmoney-sdk/payment-form-sdk.types'
+import { PaymentMethodCapabilities } from './xmoney-sdk/payment-method-capabilities.types'
 import {
-  XMoneySavedCardPaymentInstance,
+  SavedCardPaymentInstance,
   XMoneySavedCardPaymentConfig,
-} from "./xmoney-sdk/saved-card-payment-sdk.types";
+} from './xmoney-sdk/saved-card-payment-sdk.types'
 
 declare global {
   interface Window {
     XMoney: {
-      paymentForm: (
-        config: XMoneyPaymentFormConfig,
-      ) => Promise<XMoneyPaymentFormInstance>;
-      paymentCard: (
-        config: XMoneyPaymentCardConfig,
-      ) => Promise<XMoneyPaymentCardInstance>;
+      paymentForm: (config: PaymentFormConfig) => Promise<PaymentFormInstance>
+      paymentCard: (config: PaymentCardConfig) => Promise<PaymentCardInstance>
       savedCardPayment: (
-        config: XMoneySavedCardPaymentConfig,
-      ) => Promise<XMoneySavedCardPaymentInstance>;
-      googlePay: (
-        config: XMoneyGooglePayConfig,
-      ) => Promise<XMoneyGooglePayInstance>;
-      applePay: (
-        config: XMoneyApplePayConfig,
-      ) => Promise<XMoneyApplePayInstance>;
-      getPaymentMethodCapabilities: () => Promise<PaymentMethodCapabilities>;
-    };
+        config: XMoneySavedCardPaymentConfig
+      ) => Promise<SavedCardPaymentInstance>
+      googlePay: (config: GooglePayConfig) => Promise<GooglePayInstance>
+      applePay: (config: ApplePayConfig) => Promise<ApplePayInstance>
+      getPaymentMethodCapabilities: () => Promise<PaymentMethodCapabilities>
+    }
   }
 }

@@ -1,49 +1,28 @@
 import type {
-  ApplePayButtonStyle,
-  ApplePayButtonType,
-  Locale,
-  XMoneyBaseConfig,
-  XMoneyBaseInstance,
-} from './sdk-base.types'
+  ApplePayAppearance,
+  BaseConfig,
+  BaseInstance,
+  SharedOptions,
+} from "./sdk-base.types";
 
 /**
- * Configuration options for initializing and customizing the XMoney Apple Pay.
+ * Configuration options for initializing and customizing Apple Pay.
  */
-export interface XMoneyApplePayConfig extends XMoneyBaseConfig {
+export interface ApplePayConfig extends BaseConfig {
   /**
    * Options for customizing the appearance and behavior of Apple Pay.
    */
-  options?: {
+  options?: SharedOptions & {
     /**
-     * Locale for the Apple Pay.
-     * @defaultValue `"en-US"`
+     * Official Apple Pay button options only (`style`, `type`, `radius`,
+     * `height`). Custom CSS, theme variables, and custom artwork are not
+     * allowed by Apple’s brand guidelines.
      */
-    locale?: Locale
-
-    /**
-     * Appearance customization options.
-     */
-    appearance?: {
-      /**
-       * Style of the Apple Pay button.
-       * @defaultValue `"black"` when theme is light, `"white"` when theme is dark
-       */
-      style?: ApplePayButtonStyle
-      /**
-       * Corner radius of the Apple Pay button.
-       * @defaultValue `12`
-       */
-      radius?: number
-      /**
-       * Type of the Apple Pay button.
-       * @defaultValue `"pay"`
-       */
-      type?: ApplePayButtonType
-    }
-  }
+    appearance?: ApplePayAppearance;
+  };
 }
 
 /**
- * Represents an instance of the XMoney Apple Pay, providing methods to interact with and manage the payment.
+ * Represents an instance of Apple Pay, providing methods to interact with and manage the payment.
  */
-export interface XMoneyApplePayInstance extends XMoneyBaseInstance {}
+export interface ApplePayInstance extends BaseInstance {}

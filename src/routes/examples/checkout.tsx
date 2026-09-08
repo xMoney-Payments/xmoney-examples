@@ -4,11 +4,12 @@ import { getApiCredentials } from '@/lib/credentials'
 import { Check, ShoppingCart, Info, Plus, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { createSdkLogEvent, type SdkLogEvent } from '@/lib/sdk-events'
 import { formatConfigToJS } from '@/lib/format-utils'
 import { TwoColumnLayout, type CodeTab } from '@/components/two-column-layout'
 import type {
-  XMoneyPaymentFormConfig,
-  XMoneyPaymentFormInstance,
+  PaymentFormConfig,
+  PaymentFormInstance,
 } from '@/types/xmoney-sdk/payment-form-sdk.types'
 
 export const Route = createFileRoute('/examples/checkout')({
@@ -59,8 +60,20 @@ function CheckoutPage() {
 
   const [items, setItems] = useState<CartItem[]>(sampleItems)
   const [currency, setCurrency] = useState<'EUR' | 'RON'>('EUR')
-  const [sdkInstance, setSdkInstance] =
-    useState<XMoneyPaymentFormInstance | null>(null)
+  const [sdkInstance, setSdkInstance] = useState<PaymentFormInstance | null>(
+    null
+  )
+  const [sessionId, setSessionId] = useState(0)
+  const [events, setEvents] = useState<SdkLogEvent[]>([])
+  const logEvent = (name: SdkLogEvent['name'], payload?: unknown) => {
+    setEvents((prev) => [...prev, createSdkLogEvent(name, payload)])
+  }
+
+  const restartPayment = () => {
+    setPaymentResult(null)
+    setError(null)
+    setSessionId((n) => n + 1)
+  }
 
   // Exchange rate: 1 EUR = 4.97 RON (approximate)
   const EUR_TO_RON_RATE = 4.97
@@ -128,6 +141,7 @@ function CheckoutPage() {
 
   useEffect(() => {
     let mounted = true
+    let instance: PaymentFormInstance | null = null
 
     const initCheckout = async () => {
       setLoading(true)
@@ -151,7 +165,7 @@ function CheckoutPage() {
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: XMoneyPaymentFormConfig = {
+          const sdkConfig: PaymentFormConfig = {
             container: 'checkout-payment-form',
             publicKey: publicKey,
             orderPayload: data.payload,
@@ -159,6 +173,7 @@ function CheckoutPage() {
             card: {
               validationMode: 'onBlur',
               submitButton: { type: 'order' },
+              inputs: { grouping: 'spaced' },
             },
             paymentMethods: {
               googlePay: {
@@ -189,10 +204,10 @@ function CheckoutPage() {
             },
             onReady: () => {
               if (mounted) setLoading(false)
-              console.log('Payment form ready')
+              logEvent('onReady')
             },
             onError: (err: any) => {
-              console.error('Payment error', err)
+              logEvent('onError', err)
               if (mounted) {
                 setLoading(false)
                 setPaymentResult({
@@ -201,13 +216,17 @@ function CheckoutPage() {
                 })
               }
             },
+            onPaymentProcessing: (isProcessing: boolean) => {
+              logEvent('onPaymentProcessing', { isProcessing })
+            },
             onPaymentComplete: () => {
+              logEvent('onPaymentComplete')
               if (mounted) {
                 setPaymentResult({ status: 'success', data })
               }
             },
           }
-          const instance = await window.XMoney.paymentForm(sdkConfig)
+          instance = await window.XMoney.paymentForm(sdkConfig)
           setSdkInstance(instance)
         }
       } catch (err) {
@@ -223,15 +242,16 @@ function CheckoutPage() {
     return () => {
       clearTimeout(timer)
       mounted = false
-      if (sdkInstance) {
+      if (instance) {
         try {
-          sdkInstance.destroy()
+          instance.destroy()
         } catch (e) {
           console.error(e)
         }
       }
+      setSdkInstance(null)
     }
-  }, [])
+  }, [sessionId])
 
   useEffect(() => {
     if (!sdkInstance) return
@@ -249,7 +269,7 @@ function CheckoutPage() {
   }, [currency, items, total])
 
   const handleRefresh = () => {
-    window.location.reload()
+    restartPayment()
   }
 
   const formatPrice = (price: number, curr: 'EUR' | 'RON' = currency) => {
@@ -276,6 +296,7 @@ function CheckoutPage() {
         submitButton: { type: 'order' },
         savedCards: { enabled: true, optInVisible: true },
         validationMode: 'onBlur',
+        inputs: { grouping: 'spaced' },
       },
       2
     )
@@ -381,12 +402,14 @@ const checksum = getBase64Checksum(orderData, apiKey)
       codeTabs={codeTabs}
       onRefresh={handleRefresh}
       loading={loading}
+      events={events}
+      onClearEvents={() => setEvents([])}
     >
       <div className='bg-gray-50 min-h-full'>
         {/* Success State */}
         {paymentResult?.status === 'success' && (
           <div className='max-w-6xl mx-auto flex items-center justify-center min-h-[600px]'>
-            <div className='max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center animate-in zoom-in-95 duration-300'>
+            <div className='max-w-md w-full bg-white rounded-lg shadow-lg p-5 text-center animate-in zoom-in-95 duration-300 sm:rounded-xl sm:p-6 md:rounded-2xl md:p-8'>
               <div className='w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg'>
                 <Check className='w-10 h-10 text-white' />
               </div>
@@ -397,7 +420,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
                 Your order has been processed successfully.
               </p>
               <button
-                onClick={() => window.location.reload()}
+                onClick={restartPayment}
                 className='w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl'
               >
                 Start New Order
@@ -409,7 +432,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
         {/* Error State */}
         {paymentResult?.status === 'error' && (
           <div className='max-w-6xl mx-auto flex items-center justify-center min-h-[600px]'>
-            <div className='max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center animate-in zoom-in-95 duration-300'>
+            <div className='max-w-md w-full bg-white rounded-lg shadow-lg p-5 text-center animate-in zoom-in-95 duration-300 sm:rounded-xl sm:p-6 md:rounded-2xl md:p-8'>
               <div className='w-20 h-20 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg'>
                 <div className='text-white font-bold text-3xl'>!</div>
               </div>
@@ -418,10 +441,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
               </h2>
               <p className='text-gray-600 mb-8'>{paymentResult.message}</p>
               <button
-                onClick={() => {
-                  setPaymentResult(null)
-                  window.location.reload()
-                }}
+                onClick={restartPayment}
                 className='w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl'
               >
                 Try Again
@@ -434,7 +454,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
         {!paymentResult && (
           <div className='max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-5'>
             {/* Left Column - Order Summary */}
-            <div className='px-8 lg:px-12 py-10 border-r border-gray-100 bg-white lg:col-span-2'>
+            <div className='px-4 py-6 border-r border-gray-100 bg-white sm:px-6 sm:py-8 md:px-8 lg:col-span-2 lg:px-12 lg:py-10'>
               {/* Items */}
               <div className='mb-10 space-y-6'>
                 {items.map((item) => (
@@ -583,14 +603,14 @@ const checksum = getBase64Checksum(orderData, apiKey)
             </div>
 
             {/* Right Column - Payment Form */}
-            <div className='px-8 lg:px-12 py-10 lg:col-span-3 bg-white'>
+            <div className='px-4 py-6 lg:col-span-3 bg-white sm:px-6 sm:py-8 md:px-8 lg:px-12 lg:py-10'>
               {/* Currency Selection */}
               <div className='mb-6'>
                 <div className='flex items-center justify-center gap-3'>
                   <button
                     onClick={() => setCurrency('EUR')}
                     className={cn(
-                      'group relative flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border-2 transition-all duration-200 ease-out w-44',
+                      'group relative flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border-2 transition-all duration-200 ease-out w-full sm:w-44',
                       'hover:scale-[1.02] hover:shadow-lg',
                       currency === 'EUR'
                         ? 'border-gray-900 bg-gray-50 shadow-md'
@@ -615,7 +635,7 @@ const checksum = getBase64Checksum(orderData, apiKey)
                   <button
                     onClick={() => setCurrency('RON')}
                     className={cn(
-                      'group relative flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border-2 transition-all duration-200 ease-out w-44',
+                      'group relative flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border-2 transition-all duration-200 ease-out w-full sm:w-44',
                       'hover:scale-[1.02] hover:shadow-lg',
                       currency === 'RON'
                         ? 'border-gray-900 bg-gray-50 shadow-md'

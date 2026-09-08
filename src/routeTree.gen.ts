@@ -16,8 +16,11 @@ import { Route as PaymentFormConfigurationRouteImport } from './routes/payment-f
 import { Route as PaymentFormCardHolderVerificationRouteImport } from './routes/payment-form/card-holder-verification'
 import { Route as ExamplesVerifyCardRouteImport } from './routes/examples/verify-card'
 import { Route as ExamplesEmbeddedCheckoutRouteImport } from './routes/examples/embedded-checkout'
+import { Route as ExamplesCustomCtaRouteImport } from './routes/examples/custom-cta'
 import { Route as ExamplesCheckoutRouteImport } from './routes/examples/checkout'
 import { Route as EmbeddableComponentsRuntimeUpdatesRouteImport } from './routes/embeddable-components/runtime-updates'
+import { Route as EmbeddableComponentsMultiStepCheckoutRouteImport } from './routes/embeddable-components/multi-step-checkout'
+import { Route as EmbeddableComponentsJewelryCheckoutRouteImport } from './routes/embeddable-components/jewelry-checkout'
 import { Route as EmbeddableComponentsConfigurationRouteImport } from './routes/embeddable-components/configuration'
 import { Route as EmbeddableComponentsCardHolderVerificationRouteImport } from './routes/embeddable-components/card-holder-verification'
 
@@ -60,6 +63,11 @@ const ExamplesEmbeddedCheckoutRoute =
     path: '/examples/embedded-checkout',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ExamplesCustomCtaRoute = ExamplesCustomCtaRouteImport.update({
+  id: '/examples/custom-cta',
+  path: '/examples/custom-cta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExamplesCheckoutRoute = ExamplesCheckoutRouteImport.update({
   id: '/examples/checkout',
   path: '/examples/checkout',
@@ -69,6 +77,18 @@ const EmbeddableComponentsRuntimeUpdatesRoute =
   EmbeddableComponentsRuntimeUpdatesRouteImport.update({
     id: '/embeddable-components/runtime-updates',
     path: '/embeddable-components/runtime-updates',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EmbeddableComponentsMultiStepCheckoutRoute =
+  EmbeddableComponentsMultiStepCheckoutRouteImport.update({
+    id: '/embeddable-components/multi-step-checkout',
+    path: '/embeddable-components/multi-step-checkout',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EmbeddableComponentsJewelryCheckoutRoute =
+  EmbeddableComponentsJewelryCheckoutRouteImport.update({
+    id: '/embeddable-components/jewelry-checkout',
+    path: '/embeddable-components/jewelry-checkout',
     getParentRoute: () => rootRouteImport,
   } as any)
 const EmbeddableComponentsConfigurationRoute =
@@ -89,8 +109,11 @@ export interface FileRoutesByFullPath {
   '/migration': typeof MigrationRoute
   '/embeddable-components/card-holder-verification': typeof EmbeddableComponentsCardHolderVerificationRoute
   '/embeddable-components/configuration': typeof EmbeddableComponentsConfigurationRoute
+  '/embeddable-components/jewelry-checkout': typeof EmbeddableComponentsJewelryCheckoutRoute
+  '/embeddable-components/multi-step-checkout': typeof EmbeddableComponentsMultiStepCheckoutRoute
   '/embeddable-components/runtime-updates': typeof EmbeddableComponentsRuntimeUpdatesRoute
   '/examples/checkout': typeof ExamplesCheckoutRoute
+  '/examples/custom-cta': typeof ExamplesCustomCtaRoute
   '/examples/embedded-checkout': typeof ExamplesEmbeddedCheckoutRoute
   '/examples/verify-card': typeof ExamplesVerifyCardRoute
   '/payment-form/card-holder-verification': typeof PaymentFormCardHolderVerificationRoute
@@ -102,8 +125,11 @@ export interface FileRoutesByTo {
   '/migration': typeof MigrationRoute
   '/embeddable-components/card-holder-verification': typeof EmbeddableComponentsCardHolderVerificationRoute
   '/embeddable-components/configuration': typeof EmbeddableComponentsConfigurationRoute
+  '/embeddable-components/jewelry-checkout': typeof EmbeddableComponentsJewelryCheckoutRoute
+  '/embeddable-components/multi-step-checkout': typeof EmbeddableComponentsMultiStepCheckoutRoute
   '/embeddable-components/runtime-updates': typeof EmbeddableComponentsRuntimeUpdatesRoute
   '/examples/checkout': typeof ExamplesCheckoutRoute
+  '/examples/custom-cta': typeof ExamplesCustomCtaRoute
   '/examples/embedded-checkout': typeof ExamplesEmbeddedCheckoutRoute
   '/examples/verify-card': typeof ExamplesVerifyCardRoute
   '/payment-form/card-holder-verification': typeof PaymentFormCardHolderVerificationRoute
@@ -116,8 +142,11 @@ export interface FileRoutesById {
   '/migration': typeof MigrationRoute
   '/embeddable-components/card-holder-verification': typeof EmbeddableComponentsCardHolderVerificationRoute
   '/embeddable-components/configuration': typeof EmbeddableComponentsConfigurationRoute
+  '/embeddable-components/jewelry-checkout': typeof EmbeddableComponentsJewelryCheckoutRoute
+  '/embeddable-components/multi-step-checkout': typeof EmbeddableComponentsMultiStepCheckoutRoute
   '/embeddable-components/runtime-updates': typeof EmbeddableComponentsRuntimeUpdatesRoute
   '/examples/checkout': typeof ExamplesCheckoutRoute
+  '/examples/custom-cta': typeof ExamplesCustomCtaRoute
   '/examples/embedded-checkout': typeof ExamplesEmbeddedCheckoutRoute
   '/examples/verify-card': typeof ExamplesVerifyCardRoute
   '/payment-form/card-holder-verification': typeof PaymentFormCardHolderVerificationRoute
@@ -131,8 +160,11 @@ export interface FileRouteTypes {
     | '/migration'
     | '/embeddable-components/card-holder-verification'
     | '/embeddable-components/configuration'
+    | '/embeddable-components/jewelry-checkout'
+    | '/embeddable-components/multi-step-checkout'
     | '/embeddable-components/runtime-updates'
     | '/examples/checkout'
+    | '/examples/custom-cta'
     | '/examples/embedded-checkout'
     | '/examples/verify-card'
     | '/payment-form/card-holder-verification'
@@ -144,8 +176,11 @@ export interface FileRouteTypes {
     | '/migration'
     | '/embeddable-components/card-holder-verification'
     | '/embeddable-components/configuration'
+    | '/embeddable-components/jewelry-checkout'
+    | '/embeddable-components/multi-step-checkout'
     | '/embeddable-components/runtime-updates'
     | '/examples/checkout'
+    | '/examples/custom-cta'
     | '/examples/embedded-checkout'
     | '/examples/verify-card'
     | '/payment-form/card-holder-verification'
@@ -157,8 +192,11 @@ export interface FileRouteTypes {
     | '/migration'
     | '/embeddable-components/card-holder-verification'
     | '/embeddable-components/configuration'
+    | '/embeddable-components/jewelry-checkout'
+    | '/embeddable-components/multi-step-checkout'
     | '/embeddable-components/runtime-updates'
     | '/examples/checkout'
+    | '/examples/custom-cta'
     | '/examples/embedded-checkout'
     | '/examples/verify-card'
     | '/payment-form/card-holder-verification'
@@ -171,8 +209,11 @@ export interface RootRouteChildren {
   MigrationRoute: typeof MigrationRoute
   EmbeddableComponentsCardHolderVerificationRoute: typeof EmbeddableComponentsCardHolderVerificationRoute
   EmbeddableComponentsConfigurationRoute: typeof EmbeddableComponentsConfigurationRoute
+  EmbeddableComponentsJewelryCheckoutRoute: typeof EmbeddableComponentsJewelryCheckoutRoute
+  EmbeddableComponentsMultiStepCheckoutRoute: typeof EmbeddableComponentsMultiStepCheckoutRoute
   EmbeddableComponentsRuntimeUpdatesRoute: typeof EmbeddableComponentsRuntimeUpdatesRoute
   ExamplesCheckoutRoute: typeof ExamplesCheckoutRoute
+  ExamplesCustomCtaRoute: typeof ExamplesCustomCtaRoute
   ExamplesEmbeddedCheckoutRoute: typeof ExamplesEmbeddedCheckoutRoute
   ExamplesVerifyCardRoute: typeof ExamplesVerifyCardRoute
   PaymentFormCardHolderVerificationRoute: typeof PaymentFormCardHolderVerificationRoute
@@ -231,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamplesEmbeddedCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/examples/custom-cta': {
+      id: '/examples/custom-cta'
+      path: '/examples/custom-cta'
+      fullPath: '/examples/custom-cta'
+      preLoaderRoute: typeof ExamplesCustomCtaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/examples/checkout': {
       id: '/examples/checkout'
       path: '/examples/checkout'
@@ -243,6 +291,20 @@ declare module '@tanstack/react-router' {
       path: '/embeddable-components/runtime-updates'
       fullPath: '/embeddable-components/runtime-updates'
       preLoaderRoute: typeof EmbeddableComponentsRuntimeUpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/embeddable-components/multi-step-checkout': {
+      id: '/embeddable-components/multi-step-checkout'
+      path: '/embeddable-components/multi-step-checkout'
+      fullPath: '/embeddable-components/multi-step-checkout'
+      preLoaderRoute: typeof EmbeddableComponentsMultiStepCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/embeddable-components/jewelry-checkout': {
+      id: '/embeddable-components/jewelry-checkout'
+      path: '/embeddable-components/jewelry-checkout'
+      fullPath: '/embeddable-components/jewelry-checkout'
+      preLoaderRoute: typeof EmbeddableComponentsJewelryCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/embeddable-components/configuration': {
@@ -269,9 +331,14 @@ const rootRouteChildren: RootRouteChildren = {
     EmbeddableComponentsCardHolderVerificationRoute,
   EmbeddableComponentsConfigurationRoute:
     EmbeddableComponentsConfigurationRoute,
+  EmbeddableComponentsJewelryCheckoutRoute:
+    EmbeddableComponentsJewelryCheckoutRoute,
+  EmbeddableComponentsMultiStepCheckoutRoute:
+    EmbeddableComponentsMultiStepCheckoutRoute,
   EmbeddableComponentsRuntimeUpdatesRoute:
     EmbeddableComponentsRuntimeUpdatesRoute,
   ExamplesCheckoutRoute: ExamplesCheckoutRoute,
+  ExamplesCustomCtaRoute: ExamplesCustomCtaRoute,
   ExamplesEmbeddedCheckoutRoute: ExamplesEmbeddedCheckoutRoute,
   ExamplesVerifyCardRoute: ExamplesVerifyCardRoute,
   PaymentFormCardHolderVerificationRoute:

@@ -40,12 +40,15 @@ import type {
   Card as SavedCard,
   TransactionDetails,
 } from '@/types/checkout.types'
-import type { XMoneyPaymentCardInstance } from '@/types/xmoney-sdk/payment-card-sdk.types'
-import type { XMoneySavedCardPaymentInstance } from '@/types/xmoney-sdk/saved-card-payment-sdk.types'
-import type { XMoneyGooglePayInstance } from '@/types/xmoney-sdk/google-pay-sdk.types'
-import type { XMoneyApplePayInstance } from '@/types/xmoney-sdk/apple-pay-sdk.types'
+import type { PaymentCardInstance } from '@/types/xmoney-sdk/payment-card-sdk.types'
+import type { SavedCardPaymentInstance } from '@/types/xmoney-sdk/saved-card-payment-sdk.types'
+import type { GooglePayInstance } from '@/types/xmoney-sdk/google-pay-sdk.types'
+import type { ApplePayInstance } from '@/types/xmoney-sdk/apple-pay-sdk.types'
 import type { PaymentMethodCapabilities } from '@/types/xmoney-sdk/payment-method-capabilities.types'
 import { TestCards } from '@/components/test-cards'
+import { CardBrandBadge } from '@/components/card-brand-badge'
+import { PaymentResultCard } from '@/components/payment-result-card'
+import { WalletPayButtonSlot } from '@/components/payment-form-skeleton'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/examples/embedded-checkout')({
@@ -94,30 +97,6 @@ const MENU: Omit<OrderItem, 'quantity'>[] = [
 
 function getInitialItems() {
   return MENU.map((item) => ({ ...item, quantity: 1 }))
-}
-
-function CardBrandBadge({ type }: { type: string }) {
-  const brand = type.toLowerCase()
-  if (brand === 'visa') {
-    return (
-      <span className='rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[10px] font-extrabold tracking-tight text-blue-700'>
-        VISA
-      </span>
-    )
-  }
-  if (brand === 'mastercard') {
-    return (
-      <span className='flex items-center'>
-        <span className='-mr-2.5 inline-block h-4 w-4 rounded-full bg-red-500 opacity-90' />
-        <span className='inline-block h-4 w-4 rounded-full bg-yellow-400 opacity-90' />
-      </span>
-    )
-  }
-  return (
-    <span className='rounded bg-muted px-1 py-0.5 text-[10px] font-bold text-muted-foreground'>
-      {type.toUpperCase()}
-    </span>
-  )
 }
 
 function GooglePayBadge() {
@@ -194,12 +173,10 @@ function RouteComponent() {
   const [isApplePayReady, setIsApplePayReady] = useState(false)
   const [isSavedCardsLoading, setIsSavedCardsLoading] = useState(true)
 
-  const paymentCardRef = useRef<XMoneyPaymentCardInstance | null>(null)
-  const savedCardPaymentRef = useRef<XMoneySavedCardPaymentInstance | null>(
-    null
-  )
-  const googlePayRef = useRef<XMoneyGooglePayInstance | null>(null)
-  const applePayRef = useRef<XMoneyApplePayInstance | null>(null)
+  const paymentCardRef = useRef<PaymentCardInstance | null>(null)
+  const savedCardPaymentRef = useRef<SavedCardPaymentInstance | null>(null)
+  const googlePayRef = useRef<GooglePayInstance | null>(null)
+  const applePayRef = useRef<ApplePayInstance | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSyncedAmountRef = useRef<number | null>(null)
 
@@ -327,6 +304,39 @@ function RouteComponent() {
     }
   }
 
+  const destroySdkInstances = () => {
+    paymentCardRef.current?.destroy()
+    paymentCardRef.current = null
+    savedCardPaymentRef.current?.destroy()
+    savedCardPaymentRef.current = null
+    googlePayRef.current?.destroy()
+    googlePayRef.current = null
+    applePayRef.current?.destroy()
+    applePayRef.current = null
+    setIsCardReady(false)
+    setIsSavedCardReady(false)
+    setIsGooglePayReady(false)
+    setIsApplePayReady(false)
+  }
+
+  const restartPayment = async () => {
+    setPaymentResult(null)
+    setError(null)
+    setIsProcessing(false)
+    destroySdkInstances()
+    setLoading(true)
+    try {
+      const next = await createOrder(total)
+      setIntentData(next)
+      lastSyncedAmountRef.current = total
+    } catch (err) {
+      console.error(err)
+      setError('Failed to initialize checkout. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -412,6 +422,7 @@ function RouteComponent() {
         validationMode: 'onBlur',
         savedCards: { enabled: false, optInVisible: false },
         submitButton: { visible: false },
+        inputs: { grouping: 'spaced' },
       },
       options: {
         locale: 'en-US',
@@ -475,6 +486,8 @@ function RouteComponent() {
         appearance: {
           color: 'black',
           type: 'pay',
+          height: 48,
+          radius: 14,
         },
       },
       onReady: () => setIsGooglePayReady(true),
@@ -518,6 +531,8 @@ function RouteComponent() {
         appearance: {
           style: 'black',
           type: 'pay',
+          height: 48,
+          radius: 14,
         },
       },
       onReady: () => setIsApplePayReady(true),
@@ -578,6 +593,7 @@ const instance = await window.XMoney.paymentCard({
       optIn: { visible: true },
     },
     submitButton: { visible: false }, // use your own button
+    inputs: { grouping: 'spaced' },
   },
   options: { locale: 'en-US' },
   onReady: () => console.log('Card form ready'),
@@ -791,7 +807,7 @@ app.post('/api/orders', async (req, res) => {
 
           <button
             onClick={() => {
-              window.location.reload()
+              void restartPayment()
             }}
             className='p-2 hover:bg-gray-100 rounded-md text-gray-500 hover:text-gray-900 transition-colors'
             title='Refresh'
@@ -804,7 +820,7 @@ app.post('/api/orders', async (req, res) => {
       </div>
       {/* Checkout content — full width, scrollable */}
       <div className='h-full overflow-y-auto pb-8'>
-        <div className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6'>
+        <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6'>
           {error && (
             <div className='flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
               <AlertCircle className='mt-0.5 h-4 w-4' />
@@ -815,10 +831,22 @@ app.post('/api/orders', async (req, res) => {
             </div>
           )}
 
-          {paymentResult && <PaymentSuccessCard result={paymentResult} />}
+          {paymentResult && (
+            <PaymentResultCard
+              result={paymentResult}
+              variant={
+                paymentResult.transactionStatus === 'complete-ok'
+                  ? 'success'
+                  : 'error'
+              }
+              onRestart={() => {
+                void restartPayment()
+              }}
+            />
+          )}
 
           {loading ? (
-            <div className='grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start'>
+            <div className='grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12 lg:items-start'>
               {/* Delivery skeleton */}
               <Card className='overflow-hidden border-border/70 lg:col-span-4 pt-0'>
                 <CardHeader className='border-b bg-gradient-to-r from-primary/[0.06] to-transparent pt-6'>
@@ -880,7 +908,7 @@ app.post('/api/orders', async (req, res) => {
                   {[0, 1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className='h-14 animate-pulse rounded-2xl bg-muted'
+                      className='h-14 animate-pulse rounded-lg bg-muted sm:rounded-xl md:rounded-2xl'
                     />
                   ))}
                 </CardContent>
@@ -929,12 +957,12 @@ app.post('/api/orders', async (req, res) => {
                       <div className='h-7 w-24 animate-pulse rounded bg-muted' />
                     </div>
                   </div>
-                  <div className='h-12 animate-pulse rounded-xl bg-muted' />
+                  <div className='h-12 animate-pulse rounded-2xl bg-muted' />
                 </CardContent>
               </Card>
             </div>
           ) : !paymentResult ? (
-            <div className='grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start'>
+            <div className='grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12 lg:items-start'>
               {/* Delivery Details */}
               <Card className='overflow-hidden border-border/70 lg:col-span-4 pt-0'>
                 <CardHeader className='border-b bg-gradient-to-r from-primary/[0.06] to-transparent pt-6'>
@@ -1143,7 +1171,7 @@ app.post('/api/orders', async (req, res) => {
                   <>
                     {/* Credit / Debit Card */}
                     <div
-                      className={`rounded-2xl border p-4 transition-colors ${
+                      className={`rounded-lg border p-3 transition-colors sm:rounded-xl sm:p-4 md:rounded-2xl ${
                         activeMethod === 'card'
                           ? 'border-primary/70 bg-primary/5'
                           : 'border-border'
@@ -1207,7 +1235,7 @@ app.post('/api/orders', async (req, res) => {
 
                     {/* Saved Cards */}
                     <div
-                      className={`rounded-2xl border p-4 transition-colors ${
+                      className={`rounded-lg border p-3 transition-colors sm:rounded-xl sm:p-4 md:rounded-2xl ${
                         activeMethod === 'saved-card'
                           ? 'border-primary/70 bg-primary/5'
                           : 'border-border'
@@ -1323,7 +1351,7 @@ app.post('/api/orders', async (req, res) => {
                     {/* Google Pay */}
                     {capabilities?.googlePay?.supported !== false && (
                       <div
-                        className={`rounded-2xl border p-4 transition-colors ${
+                        className={`rounded-lg border p-3 transition-colors sm:rounded-xl sm:p-4 md:rounded-2xl ${
                           activeMethod === 'google-pay'
                             ? 'border-primary/70 bg-primary/5'
                             : 'border-border'
@@ -1375,7 +1403,7 @@ app.post('/api/orders', async (req, res) => {
                     {/* Apple Pay */}
                     {capabilities?.applePay?.supported !== false && (
                       <div
-                        className={`rounded-2xl border p-4 transition-colors ${
+                        className={`rounded-lg border p-3 transition-colors sm:rounded-xl sm:p-4 md:rounded-2xl ${
                           activeMethod === 'apple-pay'
                             ? 'border-primary/70 bg-primary/5'
                             : 'border-border'
@@ -1521,43 +1549,31 @@ app.post('/api/orders', async (req, res) => {
                       activeMethod === 'google-pay' ? 'block' : 'hidden'
                     }
                   >
-                    <div className='relative h-12'>
-                      {!isGooglePayReady && (
-                        <div className='absolute inset-0 animate-pulse rounded-xl bg-muted' />
-                      )}
-                      <div
-                        id='advanced-checkout-google-pay'
-                        className='min-h-[48px]'
-                        style={{ opacity: isGooglePayReady ? 1 : 0 }}
-                      />
-                    </div>
+                    <WalletPayButtonSlot
+                      containerId='advanced-checkout-google-pay'
+                      isReady={isGooglePayReady}
+                    />
                   </div>
                   <div
                     className={
                       activeMethod === 'apple-pay' ? 'block' : 'hidden'
                     }
                   >
-                    <div className='relative h-12'>
-                      {!isApplePayReady && (
-                        <div className='absolute inset-0 animate-pulse rounded-xl bg-muted' />
-                      )}
-                      <div
-                        id='advanced-checkout-apple-pay'
-                        className='min-h-[48px]'
-                        style={{ opacity: isApplePayReady ? 1 : 0 }}
-                      />
-                    </div>
+                    <WalletPayButtonSlot
+                      containerId='advanced-checkout-apple-pay'
+                      isReady={isApplePayReady}
+                    />
                   </div>
 
                   {/* Fixed-height button zone — skeleton → button, no layout shift */}
                   {(activeMethod === 'card' ||
                     activeMethod === 'saved-card') && (
-                    <div className='h-12'>
+                    <div style={{ height: 48 }}>
                       {!isActiveMethodReady ? (
-                        <div className='h-12 animate-pulse rounded-xl bg-muted' />
+                        <div className='h-full w-full animate-pulse rounded-2xl bg-muted' />
                       ) : isProcessing ? (
                         <Button
-                          className='h-12 w-full rounded-xl text-base'
+                          className='h-full w-full rounded-2xl text-base'
                           disabled
                         >
                           <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -1565,7 +1581,7 @@ app.post('/api/orders', async (req, res) => {
                         </Button>
                       ) : activeMethod === 'card' ? (
                         <Button
-                          className='h-12 w-full rounded-xl text-base'
+                          className='h-full w-full rounded-2xl text-base'
                           disabled={isUpdatingOrder}
                           onClick={placeOrder}
                         >
@@ -1574,7 +1590,7 @@ app.post('/api/orders', async (req, res) => {
                         </Button>
                       ) : (
                         <Button
-                          className='h-12 w-full rounded-xl text-base'
+                          className='h-full w-full rounded-2xl text-base'
                           disabled={isUpdatingOrder || !selectedSavedCardId}
                           onClick={payWithSavedCard}
                         >
@@ -1706,233 +1722,6 @@ app.post('/api/orders', async (req, res) => {
             ))}
           </div>
         </Tabs>
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// PaymentSuccessCard
-// ---------------------------------------------------------------------------
-
-interface DetailRowProps {
-  label: string
-  value: string
-  mono?: boolean
-  badge?: boolean
-  badgeFailed?: boolean
-}
-
-function DetailRow({ label, value, mono, badge, badgeFailed }: DetailRowProps) {
-  return (
-    <div className='flex items-center justify-between py-2.5 first:pt-0 last:pb-0'>
-      <span className='text-sm text-[var(--color-neutral-500)]'>{label}</span>
-      {badge ? (
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeFailed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
-        >
-          {value}
-        </span>
-      ) : (
-        <span
-          className={`text-sm font-medium text-[var(--color-neutral-800)] ${mono ? 'font-mono' : ''}`}
-        >
-          {value}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function formatSuccessDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatTransactionStatus(status: string): string {
-  if (status === 'complete-ok') return 'Completed'
-  return 'Failed'
-}
-
-function PaymentSuccessCard({ result }: { result: TransactionDetails }) {
-  const [expanded, setExpanded] = useState(false)
-  const isSuccess = result.transactionStatus === 'complete-ok'
-
-  return (
-    <div className='w-full mx-auto max-w-md mt-6 animate-[slideInDown_0.35s_ease]'>
-      <div className='overflow-hidden w-full rounded-2xl border border-[var(--color-neutral-100)] bg-white shadow-[0_8px_40px_rgba(22,20,26,0.10)]'>
-        {/* Header */}
-        <div
-          className={`px-6 py-8 text-center text-white bg-gradient-to-br ${
-            isSuccess
-              ? 'from-green-400 to-green-500'
-              : 'from-red-400 to-red-500'
-          }`}
-        >
-          <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur'>
-            <svg
-              className='h-8 w-8'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth={2.5}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              {isSuccess ? (
-                <polyline points='20 6 9 17 4 12' />
-              ) : (
-                <>
-                  <line x1='18' y1='6' x2='6' y2='18' />
-                  <line x1='6' y1='6' x2='18' y2='18' />
-                </>
-              )}
-            </svg>
-          </div>
-          <h3 className='m-0 text-xl font-bold'>
-            {isSuccess ? 'Payment Successful' : 'Payment Failed'}
-          </h3>
-          <p className='m-0 mt-1 text-sm text-white/80'>
-            {isSuccess
-              ? 'Your order has been confirmed'
-              : 'Your payment could not be processed'}
-          </p>
-          <div className='mt-5'>
-            <span className='text-3xl font-bold tracking-tight'>
-              {result.amount} {result.currencyKey}
-            </span>
-          </div>
-        </div>
-
-        {/* Main details */}
-        <div className='flex flex-col gap-4 p-6'>
-          <div className='divide-y divide-[var(--color-neutral-100)]'>
-            <DetailRow label='Transaction ID' value={`#${result.id}`} mono />
-            <DetailRow
-              label='Order ID'
-              value={`#${result.externalOrderId}`}
-              mono
-            />
-            <DetailRow
-              label='Status'
-              value={formatTransactionStatus(result.transactionStatus)}
-              badge
-              badgeFailed={!isSuccess}
-            />
-            {result.customerData?.creationDate && (
-              <DetailRow
-                label='Date'
-                value={formatSuccessDate(result.customerData.creationDate)}
-              />
-            )}
-            {result.customerData?.email && (
-              <DetailRow
-                label='Receipt sent to'
-                value={result.customerData.email}
-              />
-            )}
-          </div>
-
-          {/* Expand toggle */}
-          <button
-            type='button'
-            onClick={() => setExpanded((v) => !v)}
-            className='flex w-full cursor-pointer items-center justify-between border-0 bg-transparent px-0 py-2 text-sm font-medium
-              text-[var(--color-neutral-500)] transition-colors duration-200 hover:text-[var(--color-neutral-700)]'
-          >
-            <span>{expanded ? 'Hide details' : 'More details'}</span>
-            <svg
-              className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth={2}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              <path d='M6 9l6 6 6-6' />
-            </svg>
-          </button>
-
-          {/* Expanded details */}
-          {expanded && (
-            <div className='divide-y divide-[var(--color-neutral-100)] border-t border-[var(--color-neutral-100)]'>
-              {result.customerData?.firstName && (
-                <DetailRow
-                  label='Customer'
-                  value={`${result.customerData.firstName} ${result.customerData.lastName}`}
-                />
-              )}
-              {result.customerData?.phone && (
-                <DetailRow label='Phone' value={result.customerData.phone} />
-              )}
-              {result.customerData?.country && (
-                <DetailRow
-                  label='Country'
-                  value={result.customerData.country}
-                />
-              )}
-              {result.amountInEuro && (
-                <DetailRow
-                  label='Amount (EUR)'
-                  value={`€${result.amountInEuro}`}
-                />
-              )}
-              {result.description && (
-                <DetailRow label='Description' value={result.description} />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Footer actions */}
-        <div className='flex flex-col gap-3 px-6 pb-6'>
-          <button
-            type='button'
-            onClick={() => window.location.reload()}
-            className='flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-neutral-200)]
-              bg-[var(--color-neutral-50)] px-6 py-3 text-sm font-semibold
-              text-[var(--color-neutral-700)] transition-all duration-200
-              hover:border-[var(--color-neutral-300)] hover:bg-[var(--color-neutral-100)] active:scale-[0.98]'
-          >
-            <svg
-              className='h-4 w-4'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth={2}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              <path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' />
-              <path d='M3 3v5h5' />
-            </svg>
-            Try new transaction
-          </button>
-          <div className='flex items-center justify-center gap-2 rounded-xl border border-green-100 bg-green-50 py-3'>
-            <svg
-              className='h-4 w-4'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='var(--color-green-600)'
-              strokeWidth={2}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              <rect x='3' y='11' width='18' height='11' rx='2' ry='2' />
-              <path d='M7 11V7a5 5 0 0 1 10 0v4' />
-            </svg>
-            <span className='text-xs font-medium text-green-700'>
-              Secured by xMoney
-            </span>
-          </div>
-        </div>
       </div>
     </div>
   )

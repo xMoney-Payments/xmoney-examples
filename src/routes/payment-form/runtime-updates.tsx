@@ -13,14 +13,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { PreviewState } from '@/components/preview-state'
 import {
   ThreeColumnLayout,
   type CodeTab,
 } from '@/components/three-column-layout'
 import type {
-  XMoneyPaymentFormConfig,
-  XMoneyPaymentFormInstance,
+  PaymentFormConfig,
+  PaymentFormInstance,
 } from '@/types/xmoney-sdk/payment-form-sdk.types'
+import { createSdkLogEvent, type SdkLogEvent } from '@/lib/sdk-events'
+import { assertXMoneyLoaded } from '@/lib/create-order'
+import type { Locale } from '@/types/xmoney-sdk/sdk-base.types'
 
 export const Route = createFileRoute('/payment-form/runtime-updates')({
   component: RuntimeUpdatesPage,
@@ -34,14 +38,19 @@ function RuntimeUpdatesPage() {
     message?: string
     data?: any
   } | null>(null)
-  const sdkInstanceRef = useRef<XMoneyPaymentFormInstance | null>(null)
+  const sdkInstanceRef = useRef<PaymentFormInstance | null>(null)
+  const [events, setEvents] = useState<SdkLogEvent[]>([])
+
+  const logEvent = (name: SdkLogEvent['name'], payload?: unknown) => {
+    setEvents((prev) => [...prev, createSdkLogEvent(name, payload)])
+  }
 
   // Order state (for form inputs)
   const [amount, setAmount] = useState(100)
   const [currency, setCurrency] = useState('EUR')
 
   // Locale state (for form inputs)
-  const [locale, setLocale] = useState<'en-US' | 'el-GR' | 'ro-RO'>('en-US')
+  const [locale, setLocale] = useState<Locale>('en-US')
 
   // Appearance state (for form inputs)
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'custom'>(
@@ -52,9 +61,7 @@ function RuntimeUpdatesPage() {
   // Applied state (what's actually applied to the SDK - used in code tabs)
   const [appliedAmount, setAppliedAmount] = useState(100)
   const [appliedCurrency, setAppliedCurrency] = useState('EUR')
-  const [appliedLocale, setAppliedLocale] = useState<
-    'en-US' | 'el-GR' | 'ro-RO'
-  >('en-US')
+  const [appliedLocale, setAppliedLocale] = useState<Locale>('en-US')
   const [appliedThemeMode, setAppliedThemeMode] = useState<
     'light' | 'dark' | 'custom'
   >('light')
@@ -65,6 +72,14 @@ function RuntimeUpdatesPage() {
     payload: string
     checksum: string
   } | null>(null)
+
+  const [sessionId, setSessionId] = useState(0)
+
+  const restartPayment = () => {
+    setPaymentResult(null)
+    setError(null)
+    setSessionId((n) => n + 1)
+  }
 
   // Initialize payment form
   useEffect(() => {
@@ -102,13 +117,14 @@ function RuntimeUpdatesPage() {
         })
 
         if (window.XMoney) {
+          assertXMoneyLoaded()
           const container = document.getElementById(
             'runtime-updates-payment-form'
           )
           if (!container) return
           container.innerHTML = ''
 
-          const sdkConfig: XMoneyPaymentFormConfig = {
+          const sdkConfig: PaymentFormConfig = {
             container: 'runtime-updates-payment-form',
             publicKey: publicKey,
             orderPayload: data.payload,
@@ -128,25 +144,34 @@ function RuntimeUpdatesPage() {
             },
             onReady: () => {
               if (mounted) setLoading(false)
-              console.log('Payment form ready')
+              logEvent('onReady')
             },
-            onError: (err: any) => {
-              console.error('Payment error', err)
+            onError: (err: { code: number | string; message: string } | string) => {
+              logEvent('onError', err)
               if (mounted) {
                 setLoading(false)
                 setPaymentResult({
                   status: 'error',
-                  message: typeof err === 'string' ? err : 'Payment failed',
+                  message:
+                    typeof err === 'string' ? err : err.message || 'Payment failed',
                 })
               }
             },
-            onPaymentComplete: (transaction: any) => {
+            onPaymentProcessing: (isProcessing) => {
+              logEvent('onPaymentProcessing', { isProcessing })
+            },
+            onPaymentComplete: (transaction: unknown) => {
+              logEvent('onPaymentComplete', transaction)
               if (mounted) {
                 setPaymentResult({ status: 'success', data: transaction })
               }
             },
           }
           sdkInstanceRef.current = await window.XMoney.paymentForm(sdkConfig)
+        } else {
+          throw new Error(
+            'xMoney SDK is not loaded. Check the SDK version in the header and refresh the page.'
+          )
         }
       } catch (err) {
         console.error(err)
@@ -169,7 +194,7 @@ function RuntimeUpdatesPage() {
         }
       }
     }
-  }, []) // Only run once on mount
+  }, [sessionId])
 
   // Update order without reloading
   const handleUpdateOrder = async () => {
@@ -335,7 +360,9 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
       loading={loading}
       error={error}
       themeMode={appliedThemeMode === 'dark' ? 'dark' : 'light'}
-      onRefresh={() => window.location.reload()}
+      onRefresh={restartPayment}
+      events={events}
+      onClearEvents={() => setEvents([])}
       codeTabs={codeTabs}
       sidebarContent={
         <div className='flex flex-col h-full'>
@@ -348,7 +375,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             </p>
           </div>
 
-          <div className='flex-1 overflow-y-auto p-5 space-y-6'>
+          <div className='flex-1 overflow-y-auto space-y-4 p-4 sm:space-y-6 sm:p-5 md:p-6'>
             {/* Update Order */}
             <div className='space-y-3'>
               <div className='flex items-center gap-2'>
@@ -424,7 +451,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                   <Select
                     value={locale}
                     onValueChange={(value) =>
-                      setLocale(value as 'en-US' | 'el-GR' | 'ro-RO')
+                      setLocale(value as Locale)
                     }
                   >
                     <SelectTrigger id='locale' className='h-9 text-sm'>
@@ -434,6 +461,9 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
                       <SelectItem value='en-US'>English (US)</SelectItem>
                       <SelectItem value='el-GR'>Greek</SelectItem>
                       <SelectItem value='ro-RO'>Romanian</SelectItem>
+                      <SelectItem value='bg-BG'>Bulgarian</SelectItem>
+                      <SelectItem value='hu-HU'>Hungarian</SelectItem>
+                      <SelectItem value='pl-PL'>Polish</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -519,7 +549,7 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
     >
       {/* Success and Error Views */}
       {paymentResult?.status === 'success' && (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <Check className='w-8 h-8 text-green-600' />
           </div>
@@ -538,23 +568,16 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             </pre>
           </div>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              setLoading(true)
-              setTimeout(() => {
-                setLoading(false)
-                window.location.reload()
-              }, 100)
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full shadow-md'
           >
             Start New Payment
           </button>
-        </div>
+        </PreviewState>
       )}
 
       {paymentResult?.status === 'error' && (
-        <div className='flex-1 flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300'>
+        <PreviewState>
           <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm'>
             <div className='text-red-600 font-bold text-2xl'>!</div>
           </div>
@@ -565,15 +588,12 @@ const orderChecksum = getBase64Checksum(orderData, apiKey)
             {paymentResult.message}
           </p>
           <button
-            onClick={() => {
-              setPaymentResult(null)
-              window.location.reload()
-            }}
+            onClick={restartPayment}
             className='inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white w-full shadow-md'
           >
             Try Again
           </button>
-        </div>
+        </PreviewState>
       )}
 
       {/* Widget Container */}

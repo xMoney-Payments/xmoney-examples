@@ -18,6 +18,7 @@ import {
   CreditCard,
   LayoutTemplate,
   ArrowUpCircle,
+  Gem,
 } from 'lucide-react'
 import {
   Sheet,
@@ -40,7 +41,7 @@ export function AppHeader() {
             </SheetTrigger>
             <SheetContent side='left' className='w-[80%] sm:w-[350px] p-0'>
               <div className='flex flex-col h-full bg-white'>
-                <div className='px-6 py-4 border-b'>
+                <div className='border-b px-4 py-3 sm:px-6 sm:py-4'>
                   <SheetClose asChild>
                     <Link to='/' className='flex items-center space-x-2'>
                       <img src='/logo.png' alt='xMoney' className='h-8' />
@@ -148,11 +149,38 @@ export function AppHeader() {
                     </div>
                     <SheetClose asChild>
                       <Link
+                        to='/embeddable-components/jewelry-checkout'
+                        className='flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200 active:bg-indigo-100'
+                      >
+                        <Gem className='h-4 w-4 text-indigo-700' />
+                        Jewelry Checkout
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link
+                        to='/embeddable-components/multi-step-checkout'
+                        className='flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200 active:bg-indigo-100'
+                      >
+                        <ShoppingCart className='h-4 w-4 text-rose-600' />
+                        Multi-step Checkout
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link
                         to='/examples/embedded-checkout'
                         className='flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200 active:bg-indigo-100'
                       >
                         <LayoutTemplate className='h-4 w-4 text-purple-500' />
                         Embedded Checkout
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link
+                        to='/examples/custom-cta'
+                        className='flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200 active:bg-indigo-100'
+                      >
+                        <LayoutTemplate className='h-4 w-4 text-fuchsia-500' />
+                        Custom CTA
                       </Link>
                     </SheetClose>
                   </nav>
@@ -176,7 +204,7 @@ export function AppHeader() {
           </Sheet>
         </div>
 
-        <Link to='/' className='mr-6 flex items-center space-x-2'>
+        <Link to='/' className='mr-2 flex shrink-0 items-center space-x-2 md:mr-6'>
           <img src='/logo.png' alt='xMoney' className='h-8' />
         </Link>
         <div className='mr-4 hidden md:flex'>
@@ -298,7 +326,27 @@ export function AppHeader() {
                           Embeddable Components
                         </span>
                       </div>
-                      <ul className='grid gap-2'>
+                      <ul className='grid grid-cols-2 gap-2'>
+                        <ExampleListItem
+                          href='/embeddable-components/jewelry-checkout'
+                          title='Jewelry Checkout'
+                          icon={Gem}
+                          iconColor='text-indigo-700'
+                          iconBg='bg-indigo-50'
+                        >
+                          LUMIÈRE editorial layout with ultramarine styling and
+                          SDK saved cards on paymentCard.
+                        </ExampleListItem>
+                        <ExampleListItem
+                          href='/embeddable-components/multi-step-checkout'
+                          title='Multi-step Checkout'
+                          icon={ShoppingCart}
+                          iconColor='text-rose-600'
+                          iconBg='bg-rose-50'
+                        >
+                          Branded cart-to-payment flow with all embeddable
+                          methods.
+                        </ExampleListItem>
                         <ExampleListItem
                           href='/examples/embedded-checkout'
                           title='Embedded Checkout'
@@ -308,6 +356,15 @@ export function AppHeader() {
                         >
                           Full embedded checkout experience using multiple
                           XMoney components.
+                        </ExampleListItem>
+                        <ExampleListItem
+                          href='/examples/custom-cta'
+                          title='Custom CTA'
+                          icon={LayoutTemplate}
+                          iconColor='text-fuchsia-500'
+                          iconBg='bg-fuchsia-50'
+                        >
+                          Hidden submit button with validate() and submit().
                         </ExampleListItem>
                       </ul>
                     </div>
@@ -328,7 +385,7 @@ export function AppHeader() {
             </NavigationMenuList>
           </NavigationMenu>
         </div>
-        <div className='ml-auto flex items-center space-x-4'>
+        <div className='ml-auto flex min-w-0 shrink items-center gap-2 md:gap-4'>
           <SdkVersionSelector />
           <ApiSettings />
         </div>

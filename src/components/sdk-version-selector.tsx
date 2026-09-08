@@ -27,16 +27,19 @@ export function SdkVersionSelector() {
     window.location.reload()
   }
 
+  const displayValue = selectedVersion
+    ? `${selectedVersion.value} - ${selectedVersion.label}`
+    : version
+
   return (
     <Select value={version} onValueChange={handleVersionChange}>
       <SelectTrigger
-        className='w-[180px] h-9 text-xs font-medium'
+        className='h-9 w-[4.5rem] shrink-0 px-2 text-xs font-medium md:w-[180px] md:px-3'
         aria-label='Select SDK version'
       >
         <SelectValue placeholder='SDK version'>
-          {selectedVersion
-            ? `${selectedVersion.value} - ${selectedVersion.label}`
-            : version}
+          <span className='truncate md:hidden'>{version}</span>
+          <span className='hidden truncate md:inline'>{displayValue}</span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent className='max-h-72'>
