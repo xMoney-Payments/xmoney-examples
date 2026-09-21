@@ -11,6 +11,30 @@ import type {
  * Configuration options for initializing and customizing the payment form.
  */
 export interface PaymentFormConfig extends PaymentCardConfig {
+  /**
+   * Collect additional customer details (such as billing information) on the
+   * payment form, per payment method.
+   */
+  customerDetails?: {
+    /**
+     * Collect customer details for card payments.
+     *
+     * @defaultValue `false`
+     */
+    card?: boolean;
+    /**
+     * Collect customer details when paying with Apple Pay.
+     *
+     * @defaultValue `false`
+     */
+    applePay?: boolean;
+    /**
+     * Collect customer details when paying with Google Pay.
+     *
+     * @defaultValue `false`
+     */
+    googlePay?: boolean;
+  };
   paymentMethods?: {
     /**
      * Configuration for google payment methods.

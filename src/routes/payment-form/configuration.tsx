@@ -130,6 +130,11 @@ function PaymentFormConfiguration() {
     radius: 12,
     height: 48,
   })
+  const [customerDetails, setCustomerDetails] = useState({
+    card: false,
+    applePay: false,
+    googlePay: false,
+  })
 
   const [capabilities, setCapabilities] =
     useState<PaymentMethodCapabilities | null>(null)
@@ -233,6 +238,7 @@ function PaymentFormConfiguration() {
               appearance: applePayAppearance,
             },
           },
+          customerDetails,
           options: {
             locale: config.locale,
             appearance: appearance as any,
@@ -308,6 +314,7 @@ function PaymentFormConfiguration() {
     sessionId,
     googlePayAppearance,
     applePayAppearance,
+    customerDetails,
   ])
 
   useEffect(() => {
@@ -372,6 +379,13 @@ function PaymentFormConfiguration() {
         .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
         .join('\n')
     })()},
+  customerDetails: ${(() => {
+    const str = formatConfigToJS(customerDetails, 2)
+    return str
+      .split('\n')
+      .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
+      .join('\n')
+  })()},
   options: ${(() => {
     const str = formatConfigToJS(
       {
@@ -671,7 +685,9 @@ const checksum = getBase64Checksum(orderData, apiKey)
                               <SelectItem value='donate'>Donate</SelectItem>
                               <SelectItem value='order'>Order</SelectItem>
                               <SelectItem value='plain'>Plain</SelectItem>
-                              <SelectItem value='subscribe'>Subscribe</SelectItem>
+                              <SelectItem value='subscribe'>
+                                Subscribe
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -690,8 +706,12 @@ const checksum = getBase64Checksum(orderData, apiKey)
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='no_border'>No border</SelectItem>
-                              <SelectItem value='default_border'>Default</SelectItem>
+                              <SelectItem value='no_border'>
+                                No border
+                              </SelectItem>
+                              <SelectItem value='default_border'>
+                                Default
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -704,7 +724,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
                             onChange={(e) =>
                               setGooglePayAppearance({
                                 ...googlePayAppearance,
-                                radius: Math.max(0, Number(e.target.value) || 0),
+                                radius: Math.max(
+                                  0,
+                                  Number(e.target.value) || 0
+                                ),
                               })
                             }
                             className='h-8'
@@ -761,7 +784,9 @@ const checksum = getBase64Checksum(orderData, apiKey)
                               <SelectItem value='donate'>Donate</SelectItem>
                               <SelectItem value='order'>Order</SelectItem>
                               <SelectItem value='plain'>Plain</SelectItem>
-                              <SelectItem value='subscribe'>Subscribe</SelectItem>
+                              <SelectItem value='subscribe'>
+                                Subscribe
+                              </SelectItem>
                               <SelectItem value='top-up'>Top Up</SelectItem>
                             </SelectContent>
                           </Select>
@@ -775,7 +800,10 @@ const checksum = getBase64Checksum(orderData, apiKey)
                             onChange={(e) =>
                               setApplePayAppearance({
                                 ...applePayAppearance,
-                                radius: Math.max(0, Number(e.target.value) || 0),
+                                radius: Math.max(
+                                  0,
+                                  Number(e.target.value) || 0
+                                ),
                               })
                             }
                             className='h-8'
@@ -784,6 +812,72 @@ const checksum = getBase64Checksum(orderData, apiKey)
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Section: Customer Details */}
+              <div className='space-y-4'>
+                <h3 className='text-xs font-semibold uppercase tracking-wider text-gray-500'>
+                  Customer Details
+                </h3>
+                <div className='space-y-3'>
+                  {[
+                    {
+                      id: 'card' as const,
+                      label: 'Card',
+                      tooltip:
+                        'Collect additional customer details on the card payment form.',
+                    },
+                    {
+                      id: 'googlePay' as const,
+                      label: 'Google Pay',
+                      tooltip:
+                        'Request customer details when the customer pays with Google Pay.',
+                    },
+                    {
+                      id: 'applePay' as const,
+                      label: 'Apple Pay',
+                      tooltip:
+                        'Request customer details when the customer pays with Apple Pay.',
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.id}
+                      className='flex items-center justify-between'
+                    >
+                      <div className='flex items-center gap-2 flex-1'>
+                        <Label
+                          htmlFor={`customerDetails-${item.id}`}
+                          className='cursor-pointer font-normal text-sm'
+                        >
+                          {item.label}
+                        </Label>
+                        <Tooltip delayDuration={300}>
+                          <TooltipTrigger asChild>
+                            <Info className='w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help' />
+                          </TooltipTrigger>
+                          <TooltipContent
+                            className='max-w-[220px]'
+                            side='right'
+                          >
+                            <p>{item.tooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <Switch
+                        id={`customerDetails-${item.id}`}
+                        checked={customerDetails[item.id]}
+                        onCheckedChange={(checked) =>
+                          setCustomerDetails({
+                            ...customerDetails,
+                            [item.id]: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 
