@@ -48,6 +48,13 @@ const checkout = await window.XMoney.paymentForm({
     applePay: { enabled: true },
   },
 
+  // Collect customer details per payment method
+  customerDetails: {
+    card: false,
+    applePay: false,
+    googlePay: false,
+  },
+
   // Shared options (appearance & locale)
   options: {
     locale: 'en-US',
@@ -70,19 +77,20 @@ const checkout = await window.XMoney.paymentForm({
 
 ## Configuration Properties
 
-| Property              | Type       | Required | Description                                                                |
-| :-------------------- | :--------- | :------: | :------------------------------------------------------------------------- |
-| `container`           | `string`   | **Yes**  | DOM element ID where the form will be rendered.                            |
-| `publicKey`           | `string`   | **Yes**  | Your Site ID public key (`pk_test_...` or `pk_live_...`).                  |
-| `orderPayload`        | `string`   | **Yes**  | Base64-encoded encrypted order data from your backend.                     |
-| `orderChecksum`       | `string`   | **Yes**  | HMAC signature of the payload from your backend.                           |
-| `card`                | `object`   |    No    | Card-specific options: validation, submit button, saved cards (see below). |
-| `paymentMethods`      | `object`   |    No    | Payment methodts options: `googlePay`, `applePay` (see below).             |
-| `options`             | `object`   |    No    | Shared options: `locale` and `appearance` (see below).                     |
-| `onReady`             | `function` |    No    | Callback fired when form is ready.                                         |
-| `onError`             | `function` |    No    | Callback fired on form initialization errors (not transaction errors).     |
-| `onPaymentComplete`   | `function` |    No    | Callback fired when payment is completed (success or failure).             |
-| `onPaymentProcessing` | `function` |    No    | Callback fired when submission processing state changes.                   |
+| Property              | Type       | Required | Description                                                                   |
+| :-------------------- | :--------- | :------: | :---------------------------------------------------------------------------- |
+| `container`           | `string`   | **Yes**  | DOM element ID where the form will be rendered.                               |
+| `publicKey`           | `string`   | **Yes**  | Your Site ID public key (`pk_test_...` or `pk_live_...`).                     |
+| `orderPayload`        | `string`   | **Yes**  | Base64-encoded encrypted order data from your backend.                        |
+| `orderChecksum`       | `string`   | **Yes**  | HMAC signature of the payload from your backend.                              |
+| `card`                | `object`   |    No    | Card-specific options: validation, submit button, saved cards (see below).    |
+| `paymentMethods`      | `object`   |    No    | Payment methodts options: `googlePay`, `applePay` (see below).                |
+| `customerDetails`     | `object`   |    No    | Collect customer details per payment method: `card`, `applePay`, `googlePay`. |
+| `options`             | `object`   |    No    | Shared options: `locale` and `appearance` (see below).                        |
+| `onReady`             | `function` |    No    | Callback fired when form is ready.                                            |
+| `onError`             | `function` |    No    | Callback fired on form initialization errors (not transaction errors).        |
+| `onPaymentComplete`   | `function` |    No    | Callback fired when payment is completed (success or failure).                |
+| `onPaymentProcessing` | `function` |    No    | Callback fired when submission processing state changes.                      |
 
 ## Options
 
@@ -103,6 +111,24 @@ const checkout = await window.XMoney.paymentForm({
 | :------------------------- | :------- | :------ | :------------------------ |
 | `paymentMethods.googlePay` | `object` | —       | Google Pay configuration. |
 | `paymentMethods.applePay`  | `object` | —       | Apple Pay configuration.  |
+
+### `customerDetails` — Collect customer details
+
+Collect additional customer details (such as billing information) on the payment form. Enable this independently for each payment method.
+
+```javascript
+customerDetails: {
+  card: true,
+  applePay: true,
+  googlePay: true,
+}
+```
+
+| Property                    | Type      | Default | Description                                           |
+| :-------------------------- | :-------- | :------ | :---------------------------------------------------- |
+| `customerDetails.card`      | `boolean` | `false` | Collect customer details for card payments.           |
+| `customerDetails.applePay`  | `boolean` | `false` | Collect customer details when paying with Apple Pay.  |
+| `customerDetails.googlePay` | `boolean` | `false` | Collect customer details when paying with Google Pay. |
 
 ### `options` — Shared options
 

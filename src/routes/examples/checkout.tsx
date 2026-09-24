@@ -185,6 +185,11 @@ function CheckoutPage() {
                 appearance: { style: 'black', type: 'order' },
               },
             },
+            customerDetails: {
+              card: false,
+              applePay: false,
+              googlePay: false,
+            },
             options: {
               locale: 'en-US',
               appearance: {
@@ -318,6 +323,11 @@ function CheckoutPage() {
       .map((line: string, i: number) => (i === 0 ? line : '  ' + line))
       .join('\n')
   })()},
+  customerDetails: {
+    card: true,
+    applePay: true,
+    googlePay: true,
+  },
   options: ${(() => {
     const str = formatConfigToJS(
       {
